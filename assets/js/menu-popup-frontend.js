@@ -183,7 +183,7 @@
             galleryImages,
             currentPrice,
             variations,
-            item.attr("id") || item.data("itemId") || null
+            item.attr("id") || item.data("itemId") || item.find(".add-to-cart-btn").first().attr("data-item-id") || null
           );
         });
 
@@ -362,7 +362,7 @@
             ? `${itemName} (${selectedSize})`
             : itemName;
 
-          if (selectedPrice) {
+          if (selectedPrice !== undefined && selectedPrice !== null) {
             // Parse selectedPrice to ensure it's a clean number
             let cleanSelectedPrice = selectedPrice;
             if (typeof cleanSelectedPrice === "string") {
@@ -372,7 +372,13 @@
               cleanSelectedPrice = parseFloat(cleanSelectedPrice) || 0;
             }
 
-            window.menuPopup.addToCart(itemId, displayName, cleanSelectedPrice);
+            window.menuPopup.addToCart(
+              itemId,
+              displayName,
+              cleanSelectedPrice,
+              itemBaseId,
+              selectedSize || ""
+            );
             window.menuPopup.closeGlobalVideo(); // Close modal after adding to cart
           }
         });
@@ -560,7 +566,7 @@
                     const currentPrice = item.data("price") || "";
                     const variations = item.data("sizes") || [];
 
-                    this.openGlobalVideo(processedUrl, title, description, galleryImages, currentPrice, variations, item.attr("id") || item.data("itemId") || null);
+                    this.openGlobalVideo(processedUrl, title, description, galleryImages, currentPrice, variations, item.attr("id") || item.data("itemId") || item.find(".add-to-cart-btn").first().attr("data-item-id") || null);
                   }
                 });
               }
@@ -1198,7 +1204,7 @@
                         galleryImages,
                         currentPrice,
                         variations,
-                        item.attr("id") || item.data("itemId") || null
+                        item.attr("id") || item.data("itemId") || item.find(".add-to-cart-btn").first().attr("data-item-id") || null
                       );
                     }
                   });
@@ -1363,7 +1369,7 @@
                           galleryImages,
                           currentPrice,
                           variations,
-                          item.attr("id") || item.data("itemId") || null
+                          item.attr("id") || item.data("itemId") || item.find(".add-to-cart-btn").first().attr("data-item-id") || null
                         );
                       }
                     });
@@ -1425,6 +1431,7 @@
 
                 // Get base values
                 let itemId = btn.data("item-id");
+                const baseItemId = itemId;
                 let name = btn.data("name");
                 let price = btn.data("price");
 
@@ -1439,7 +1446,13 @@
                   name = `${name} (${selectedSize})`;
                 }
 
-                this.addToCart(itemId, name, price);
+                this.addToCart(
+                  itemId,
+                  name,
+                  price,
+                  baseItemId,
+                  selectedSize && selectedPrice ? String(selectedSize) : ""
+                );
                 return false;
               }
             );
@@ -1529,7 +1542,7 @@
         localStorage.setItem("menuPopupCart", JSON.stringify(cart));
       }
 
-      addToCart(itemId, name, price) {
+      addToCart(itemId, name, price, baseId, size) {
         // Ensure price is a valid number by removing currency symbols and extracting numeric value
         let cleanPrice = price;
         if (typeof cleanPrice === "string") {
@@ -1542,6 +1555,8 @@
 
         const quantity = this.cart[itemId] ? this.cart[itemId].quantity + 1 : 1;
         this.cart[itemId] = {
+          id: baseId || (this.cart[itemId] && this.cart[itemId].id) || 0,
+          size: size || "",
           name: name,
           price: cleanPrice,
           quantity: quantity,
@@ -3053,107 +3068,93 @@
       }
 
       sendOrderViaWhatsApp(formData) {
-        // Show loading state immediately
-        const submitBtn = $("#order-form .order-form-submit");
-        const originalText = submitBtn.text();
-        submitBtn.text("Sending...").prop("disabled", true);
+        this.setOrderButtonsBusy(true, "Sending...");
 
-        // Pre-calculate all values for better performance
-        const subtotal = Object.values(this.cart).reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
-        const tax = subtotal * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
-        const total = subtotal + tax;
+        // Open the tab right away (inside the click) so the browser does not block it
+        const waWindow = window.open("", "_blank");
 
-        // Calculate delivery fee and zone details
-        let delivery_fee = 0;
-        let delivery_zone_name = "";
-
-        if (formData.order_type === "delivery" && formData.delivery_zone) {
-          // Parse delivery zones from menuPopupAjax.deliveryZones
-          if (window.menuPopupAjax && window.menuPopupAjax.deliveryZones) {
-            const deliveryZones = window.menuPopupAjax.deliveryZones;
-            const selectedZone = deliveryZones.find(
-              (zone) => zone.id === formData.delivery_zone
-            );
-            if (selectedZone) {
-              delivery_fee = parseFloat(selectedZone.fee || 0);
-              delivery_zone_name = selectedZone.name || "";
+        this.placeOrder(formData, "whatsapp")
+          .done((response) => {
+            if (!(response && response.success)) {
+              this.orderRequestId = null;
+              if (waWindow) {
+                waWindow.close();
+              }
+              this.setOrderButtonsBusy(false);
+              alert(this.orderErrorMessage(response));
+              return;
             }
-          }
-        }
 
-        // Calculate final total including delivery fee
-        const final_total = total + delivery_fee;
+            const order = response.data;
+            const cur = order.currency_symbol || menuPopupAjax.currencySymbol || "";
 
-        // Build message efficiently with String concatenation
-        let message = `🍽️ New Order from ${window.location.hostname}\n\n`;
-        message += `👤 Customer: ${formData.customer_name}\n`;
-        message += `📱 Phone: ${formData.customer_phone}\n`;
-        message += `🔖 Order Type: ${
-          formData.order_type === "delivery" ? "🚚 Delivery" : "🏪 Pickup"
-        }\n`;
+            let message = `🍽️ New Order #${order.order_number} from ${window.location.hostname}\n\n`;
+            message += `👤 Customer: ${formData.customer_name}\n`;
+            message += `📱 Phone: ${formData.customer_phone}\n`;
+            message += `🔖 Order Type: ${
+              order.order_type === "delivery" ? "🚚 Delivery" : "🏪 Pickup"
+            }\n`;
 
-        if (formData.customer_email) {
-          message += `📧 Email: ${formData.customer_email}\n`;
-        }
+            if (formData.customer_email) {
+              message += `📧 Email: ${formData.customer_email}\n`;
+            }
 
-        if (formData.order_type === "delivery") {
-          if (delivery_zone_name) {
-            message += `🏙️ Delivery Zone: ${delivery_zone_name}\n`;
-          }
-          if (delivery_fee > 0) {
-            message += `🚛 Delivery Fee: ${
-              menuPopupAjax.currencySymbol
-            }${delivery_fee.toFixed(2)}\n`;
-          }
-        }
+            if (order.order_type === "delivery") {
+              if (order.delivery_zone) {
+                message += `🏙️ Delivery Zone: ${order.delivery_zone}\n`;
+              }
+              if (formData.customer_address) {
+                message += `📍 Address: ${formData.customer_address}\n`;
+              }
+            }
 
-        if (formData.customer_address) {
-          message += `📍 Address: ${formData.customer_address}\n`;
-        }
+            message += "\n📋 Order Details:\n";
+            (order.items || []).forEach((line) => {
+              message += `• ${line.name} x${line.quantity} (${cur}${Number(
+                line.price
+              ).toFixed(2)} each)\n`;
+            });
 
-        message += "\n📋 Order Details:\n";
-        Object.entries(this.cart).forEach(([itemId, item]) => {
-          message += `• ${item.name} x${item.quantity} (${
-            menuPopupAjax.currencySymbol
-          }${item.price.toFixed(2)} each)\n`;
-        });
+            message += `\n💰 Subtotal: ${cur}${Number(order.subtotal).toFixed(2)}`;
+            if (Number(order.tax) > 0) {
+              message += `\n💸 Tax: ${cur}${Number(order.tax).toFixed(2)}`;
+            }
+            if (Number(order.delivery_fee) > 0) {
+              message += `\n🚛 Delivery Fee: ${cur}${Number(
+                order.delivery_fee
+              ).toFixed(2)}`;
+            }
+            message += `\n🏷️ Total: ${cur}${Number(order.total).toFixed(2)}`;
 
-        message += `\n💰 Subtotal: ${
-          menuPopupAjax.currencySymbol
-        }${subtotal.toFixed(2)}`;
-        message += `\n💸 Tax: ${menuPopupAjax.currencySymbol}${tax.toFixed(2)}`;
+            if (formData.special_instructions) {
+              message += `\n\n📝 Special Instructions: ${formData.special_instructions}`;
+            }
 
-        if (delivery_fee > 0) {
-          message += `\n🚛 Delivery Fee: ${
-            menuPopupAjax.currencySymbol
-          }${delivery_fee.toFixed(2)}`;
-        }
+            const whatsappUrl = `https://wa.me/${String(
+              menuPopupAjax.restaurantWhatsapp || ""
+            ).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
 
-        message += `\n🏷️ Total: ${
-          menuPopupAjax.currencySymbol
-        }${final_total.toFixed(2)}`;
+            if (waWindow) {
+              waWindow.location.href = whatsappUrl;
+            } else {
+              window.open(whatsappUrl, "_blank");
+            }
 
-        if (formData.special_instructions) {
-          message += `\n\n📝 Special Instructions: ${formData.special_instructions}`;
-        }
-
-        // Use requestAnimationFrame for UI updates, then process WhatsApp
-        requestAnimationFrame(() => {
-          const whatsappUrl = `https://wa.me/${menuPopupAjax.restaurantWhatsapp.replace(
-            /\D/g,
-            ""
-          )}?text=${encodeURIComponent(message)}`;
-          window.open(whatsappUrl, "_blank");
-
-          // Batch all UI updates
-          $("#order-form-modal").removeClass("active");
-          this.clearCart();
-          submitBtn.text(originalText).prop("disabled", false);
-          this.showSuccessNotification("Order sent successfully!");
-        });
+            this.setOrderButtonsBusy(false);
+            $("#order-form-modal, #order-confirmation-modal, #order-review-modal").removeClass(
+              "active"
+            );
+            this.orderRequestId = null;
+            this.clearCart();
+            this.showSuccessNotification("Order sent successfully!");
+          })
+          .fail(() => {
+            if (waWindow) {
+              waWindow.close();
+            }
+            this.setOrderButtonsBusy(false);
+            alert("Error connecting to server. Please try again.");
+          });
       }
 
       // Mini-cart preview system
@@ -3623,296 +3624,266 @@
         }
       }
 
+      // ------------------------------------------------------------------
+      // Order placement. The browser only sends what the customer chose
+      // (item id, size, quantity, contact details); the server works out
+      // every price, fee and total.
+      // ------------------------------------------------------------------
+
+      newRequestId() {
+        if (window.crypto && window.crypto.randomUUID) {
+          return window.crypto.randomUUID();
+        }
+        return (
+          "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12)
+        );
+      }
+
+      // Cart as plain lines: id, size and quantity
+      getCartLines() {
+        return Object.entries(this.cart).map(([key, item]) => {
+          let id = item.id;
+          let size = item.size || "";
+          if (!id) {
+            // Cart saved by an older version: rebuild from the key (id or id_size)
+            const m = String(key).match(/^(\d+)(?:_(.+))?$/);
+            id = m ? m[1] : 0;
+            size = m && m[2] ? m[2].replace(/_/g, " ") : "";
+          }
+          return {
+            id: id,
+            size: size,
+            quantity: item.quantity,
+            name: item.name,
+          };
+        });
+      }
+
+      // Send the order to the server. Returns the jQuery request.
+      placeOrder(formData, source) {
+        if (!this.orderRequestId) {
+          this.orderRequestId = this.newRequestId();
+        }
+
+        return $.ajax({
+          url: menuPopupAjax.ajaxurl,
+          type: "POST",
+          dataType: "json",
+          data: {
+            action: "mp_place_order",
+            nonce: menuPopupAjax.nonce,
+            order: {
+              request_id: this.orderRequestId,
+              source: source || "online",
+              order_type: formData.order_type || "pickup",
+              branch_id: menuPopupAjax.activeBranchId || 0,
+              customer_name: formData.customer_name || "",
+              customer_phone: formData.customer_phone || "",
+              customer_email: formData.customer_email || "",
+              customer_address: formData.customer_address || "",
+              delivery_zone: formData.delivery_zone || "",
+              special_instructions: formData.special_instructions || "",
+              payment_method: formData.payment_method || "",
+              items: this.getCartLines(),
+            },
+          },
+        });
+      }
+
+      // Message to show when the server refused the order or was unreachable
+      orderErrorMessage(response) {
+        if (response && response.data && response.data.message) {
+          return response.data.message;
+        }
+        return "Error connecting to server. Please try again.";
+      }
+
+      setOrderButtonsBusy(busy, label) {
+        const buttons = $("#order-form .order-form-submit, .confirmation-proceed");
+        buttons.each(function () {
+          const btn = $(this);
+          if (busy) {
+            if (btn.data("mp-original-text") === undefined) {
+              btn.data("mp-original-text", btn.text());
+            }
+            btn.text(label).prop("disabled", true);
+          } else {
+            if (btn.data("mp-original-text") !== undefined) {
+              btn.text(btn.data("mp-original-text"));
+              btn.removeData("mp-original-text");
+            }
+            btn.prop("disabled", false);
+          }
+        });
+      }
+
       // Process payment and place order for payment gateways
       processPaymentAndPlaceOrder(formData, paymentMethod) {
-        // Calculate totals
-        const subtotal = Object.values(this.cart).reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
-        const tax = subtotal * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
-        
-        // Calculate delivery fee
-        let delivery_fee = 0;
-        if (formData.order_type === "delivery" && formData.delivery_zone) {
-          if (window.menuPopupAjax && window.menuPopupAjax.deliveryZones) {
-            const selectedZone = window.menuPopupAjax.deliveryZones.find(
-              (zone) => zone.id === formData.delivery_zone
-            );
-            if (selectedZone) {
-              delivery_fee = parseFloat(selectedZone.fee || 0);
-            }
-          }
-        }
-        
-        const total = subtotal + tax + delivery_fee;
-
-        // Show loading
-        const confirmBtn = $(".confirmation-proceed");
-        confirmBtn.prop("disabled", true).text("Processing Payment...");
-
-        if (paymentMethod === 'fawry') {
-          // For Fawry: Create order first, then process payment
-          this.createOrderAndProcessPayment(formData, total, paymentMethod);
+        if (paymentMethod === "fawry") {
+          this.createOrderAndProcessPayment(formData, paymentMethod);
         } else {
-          // Unknown payment method - fallback to direct order
-          confirmBtn.prop("disabled", false).text("Confirm");
+          // Unknown payment method - fall back to a normal order
           this.saveOrderToDatabase(formData);
         }
       }
 
-      // Create order first, then process payment (for Fawry)
-      createOrderAndProcessPayment(formData, total, paymentMethod) {
-        // First create the order as pending_payment
-        const orderItems = JSON.stringify(Object.values(this.cart));
-        const subtotal = Object.values(this.cart).reduce(
-          (sum, item) => sum + item.price * item.quantity, 0
-        );
-        const tax = subtotal * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
-        
-        // Calculate delivery fee
-        let delivery_fee = 0;
-        if (formData.order_type === "delivery" && formData.delivery_zone) {
-          if (window.menuPopupAjax && window.menuPopupAjax.deliveryZones) {
-            const selectedZone = window.menuPopupAjax.deliveryZones.find(
-              (zone) => zone.id === formData.delivery_zone
-            );
-            if (selectedZone) {
-              delivery_fee = parseFloat(selectedZone.fee || 0);
-            }
-          }
-        }
-        const finalTotal = subtotal + tax + delivery_fee;
+      // Create the order on the server, then start the online payment (Fawry)
+      createOrderAndProcessPayment(formData, paymentMethod) {
+        this.setOrderButtonsBusy(true, "Processing Payment...");
+        formData.payment_method = paymentMethod;
 
-        const orderData = {
-          order_type: formData.order_type,
-          customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
-          customer_email: formData.customer_email || "",
-          customer_address: formData.customer_address || "",
-          delivery_zone: formData.delivery_zone,
-          delivery_fee: delivery_fee,
-          special_instructions: formData.special_instructions || "",
-          order_items: orderItems,
-          subtotal: subtotal,
-          tax: tax,
-          total: finalTotal,
-          currency_symbol: menuPopupAjax.currencySymbol,
-          payment_method: paymentMethod,
-          order_status: 'pending_payment' // Mark as pending payment
-        };
-
-        // Create order via AJAX
-        $.ajax({
-          url: menuPopupAjax.ajaxurl,
-          type: "POST",
-          data: {
-            action: "save_order",
-            order_data: orderData,
-            nonce: menuPopupAjax.nonce
-          },
-          success: (response) => {
-            if (response.success) {
-              // Order created, now process payment
-              this.processFawryPayment(formData, finalTotal, paymentMethod);
+        this.placeOrder(formData, "online")
+          .done((response) => {
+            if (response && response.success) {
+              this.processFawryPayment(formData, response.data);
             } else {
-              alert('Failed to create order. Please try again.');
-              $(".confirmation-proceed").prop("disabled", false).text("Confirm");
+              this.orderRequestId = null;
+              this.setOrderButtonsBusy(false);
+              alert(this.orderErrorMessage(response));
             }
-          },
-          error: () => {
-            alert('Error creating order. Please try again.');
-            $(".confirmation-proceed").prop("disabled", false).text("Confirm");
-          }
-        });
+          })
+          .fail(() => {
+            this.setOrderButtonsBusy(false);
+            alert("Error connecting to server. Please try again.");
+          });
       }
 
-      // Process Fawry payment
-      processFawryPayment(formData, total, paymentMethod) {
-        // Calculate order details
-        const subtotal = Object.values(this.cart).reduce(
-          (sum, item) => sum + item.price * item.quantity, 0
-        );
-        const tax = subtotal * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
-        
-        let delivery_fee = 0;
-        if (formData.order_type === "delivery" && formData.delivery_zone) {
-          if (window.menuPopupAjax && window.menuPopupAjax.deliveryZones) {
-            const selectedZone = window.menuPopupAjax.deliveryZones.find(
-              (zone) => zone.id === formData.delivery_zone
-            );
-            if (selectedZone) {
-              delivery_fee = parseFloat(selectedZone.fee || 0);
-            }
-          }
-        }
-        
-        const finalTotal = subtotal + tax + delivery_fee;
-        
-        // Prepare order data for payment processing
-        const orderData = {
-          order_type: formData.order_type,
-          customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
-          customer_email: formData.customer_email,
-          customer_address: formData.customer_address,
-          delivery_zone: formData.delivery_zone,
-          special_instructions: formData.special_instructions,
-          payment_method: 'fawry',
-          subtotal: subtotal,
-          tax: tax,
-          delivery_fee: delivery_fee,
-          total: finalTotal
-        };
-        
-        // Use the existing process_payment action
+      // Process Fawry payment for an order that already exists on the server
+      processFawryPayment(formData, order) {
         $.ajax({
           url: window.menuPopupPayment.ajax_url,
-          type: 'POST',
+          type: "POST",
           data: {
-            action: 'process_payment',
+            action: "process_payment",
             nonce: window.menuPopupPayment.nonce,
-            payment_method: 'fawry',
-            order_data: orderData
+            payment_method: "fawry",
+            order_data: {
+              order_id: order.order_id,
+              order_number: order.order_number,
+              order_type: order.order_type,
+              customer_name: formData.customer_name,
+              customer_phone: formData.customer_phone,
+              customer_email: formData.customer_email,
+              customer_address: formData.customer_address,
+              delivery_zone: formData.delivery_zone,
+              special_instructions: formData.special_instructions,
+              payment_method: "fawry",
+              subtotal: order.subtotal,
+              tax: order.tax,
+              delivery_fee: order.delivery_fee,
+              total: order.total,
+            },
           },
           success: (response) => {
             if (response.success && response.data.payment_url) {
-              // Redirect to Fawry payment page
+              // Redirect to the Fawry payment page
               window.location.href = response.data.payment_url;
-            } else if (response.success && response.data.status === 'completed') {
-              // Payment already completed - show success
-              this.showOrderSuccess(response.data.order_id);
+            } else if (response.success && response.data.status === "completed") {
+              this.setOrderButtonsBusy(false);
+              this.showOrderSuccess(order);
             } else {
-              alert(response.data.message || 'Payment initialization failed. Please try again.');
-              $(".confirmation-proceed").prop("disabled", false).text("Confirm");
+              this.setOrderButtonsBusy(false);
+              alert(
+                (response.data && response.data.message) ||
+                  "Payment initialization failed. Please try again."
+              );
             }
           },
           error: () => {
-            alert('Payment error. Please try again.');
-            $(".confirmation-proceed").prop("disabled", false).text("Confirm");
-          }
+            this.setOrderButtonsBusy(false);
+            alert("Payment error. Please try again.");
+          },
         });
       }
 
-      // Show order success
-      showOrderSuccess(orderId) {
-        // Close confirmation modal
-        $("#order-confirmation-modal").removeClass("active");
-        $("#order-review-modal").removeClass("active");
-        
-        // Clear cart
-        this.cart = {};
-        this.updateCartCount();
-        this.saveCartToStorage();
-        
-        // Show success message
-        alert('Order placed successfully! Order ID: ' + orderId);
-      }
-
-      // Save order to database
-      saveOrderToDatabase(formData) {
-        // Show loading state immediately
-        const submitBtn = $("#order-form .order-form-submit");
-        const originalText = submitBtn.text();
-        submitBtn.text("Processing...").prop("disabled", true);
-
-        // Pre-calculate all values for better performance
-        const subtotal = Object.values(this.cart).reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
+      // Success message with the order summary the server calculated
+      showOrderSuccess(result) {
+        $("#order-form-modal, #order-confirmation-modal, #order-review-modal").removeClass(
+          "active"
         );
-        const tax = subtotal * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
-        const total = subtotal + tax;
+        this.orderRequestId = null;
+        this.clearCart();
 
-        // Calculate delivery fee and zone details
-        let delivery_fee = 0;
-        let delivery_zone_name = "";
-        let min_order_amount = 0;
+        const cur = result.currency_symbol || menuPopupAjax.currencySymbol || "";
+        const money = (v) => cur + Number(v || 0).toFixed(2);
 
-        if (formData.order_type === "delivery" && formData.delivery_zone) {
-          // Parse delivery zones from menuPopupAjax.deliveryZones
-          if (window.menuPopupAjax && window.menuPopupAjax.deliveryZones) {
-            const deliveryZones = window.menuPopupAjax.deliveryZones;
-            const selectedZone = deliveryZones.find(
-              (zone) => zone.id === formData.delivery_zone
-            );
-            if (selectedZone) {
-              delivery_fee = parseFloat(selectedZone.fee || 0);
-              min_order_amount = parseFloat(selectedZone.min_order || 0);
-              delivery_zone_name = selectedZone.name || "";
-            }
-          }
+        if (!$("#mp-order-success-style").length) {
+          $("head").append(
+            '<style id="mp-order-success-style">' +
+              "#mp-order-success{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px}" +
+              "#mp-order-success .mp-os-box{background:#fff;color:#222;border-radius:14px;max-width:420px;width:100%;max-height:90vh;overflow:auto;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center}" +
+              "#mp-order-success h3{margin:0 0 6px;font-size:20px}" +
+              "#mp-order-success .mp-os-number{margin:0 0 14px;font-weight:600;color:#555}" +
+              "#mp-order-success ul{list-style:none;margin:0 0 12px;padding:0;text-align:start}" +
+              "#mp-order-success li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #eee}" +
+              "#mp-order-success .mp-os-row{display:flex;justify-content:space-between;padding:3px 0;text-align:start}" +
+              "#mp-order-success .mp-os-total{font-weight:700;font-size:17px;border-top:2px solid #222;margin-top:6px;padding-top:8px}" +
+              "#mp-order-success button{margin-top:16px;padding:10px 28px;border:0;border-radius:8px;background:#222;color:#fff;font-size:15px;cursor:pointer}" +
+              "</style>"
+          );
         }
 
-        // Check minimum order amount
-        if (formData.order_type === "delivery" && min_order_amount > 0) {
-          const cartTotal = subtotal + tax;
-          if (cartTotal < min_order_amount) {
-            alert(
-              `Minimum order for this delivery zone is $${
-                menuPopupAjax.currencySymbol
-              }${min_order_amount}. Your current total is $${
-                menuPopupAjax.currencySymbol
-              }${cartTotal.toFixed(2)}.`
-            );
-            submitBtn.text(originalText).prop("disabled", false);
-            return;
-          }
-        }
+        $("#mp-order-success").remove();
+        const overlay = $('<div id="mp-order-success"></div>');
+        const box = $('<div class="mp-os-box" role="dialog" aria-modal="true" dir="auto"></div>');
+        box.append($("<h3></h3>").text("Order placed successfully"));
+        box.append($('<p class="mp-os-number"></p>').text("Order #" + result.order_number));
 
-        // Calculate final total including delivery fee
-        const final_total = total + delivery_fee;
-
-        // Prepare order data efficiently
-        const orderData = {
-          order_type: formData.order_type,
-          customer_name: formData.customer_name,
-          customer_phone: formData.customer_phone,
-          customer_email: formData.customer_email || "",
-          customer_address: formData.customer_address || "",
-          delivery_zone: formData.delivery_zone,
-          delivery_fee: delivery_fee,
-          special_instructions: formData.special_instructions || "",
-          order_items: JSON.stringify(Object.values(this.cart)),
-          subtotal: subtotal,
-          tax: tax,
-          total: final_total,
-          currency_symbol: menuPopupAjax.currencySymbol,
-          payment_method: formData.payment_method,
-        };
-
-        // Use requestAnimationFrame for UI updates
-        requestAnimationFrame(() => {
-          $.ajax({
-            url: menuPopupAjax.ajaxurl,
-            type: "POST",
-            data: {
-              action: "save_order",
-              order_data: orderData,
-              nonce: menuPopupAjax.nonce,
-            },
-            success: (response) => {
-              if (response.success) {
-                // Show success message
-                alert("Order Placed Successfully! We Will Contact You Soon.");
-                $("#order-form-modal").removeClass("active");
-                this.clearCart();
-                this.showSuccessNotification("Order saved to dashboard!");
-              } else {
-                alert(
-                  "Error saving order: " + (response.data || "Unknown error")
-                );
-              }
-            },
-            error: () => {
-              alert("Error connecting to server. Please try again.");
-            },
-            complete: () => {
-              // Restore button state
-              submitBtn.text(originalText).prop("disabled", false);
-            },
-          });
+        const list = $("<ul></ul>");
+        (result.items || []).forEach((line) => {
+          const li = $("<li></li>");
+          li.append($("<span></span>").text(line.name + " x" + line.quantity));
+          li.append($("<span></span>").text(money(line.line_total)));
+          list.append(li);
         });
+        box.append(list);
+
+        const row = (label, value, extra) =>
+          $('<div class="mp-os-row ' + (extra || "") + '"></div>')
+            .append($("<span></span>").text(label))
+            .append($("<span></span>").text(value));
+
+        box.append(row("Subtotal", money(result.subtotal)));
+        if (Number(result.tax) > 0) {
+          box.append(row("Tax", money(result.tax)));
+        }
+        if (result.order_type === "delivery" && Number(result.delivery_fee) > 0) {
+          box.append(row("Delivery Fee", money(result.delivery_fee)));
+        }
+        box.append(row("Total", money(result.total), "mp-os-total"));
+
+        const close = $('<button type="button"></button>').text("Close");
+        const dismiss = () => overlay.remove();
+        close.on("click", dismiss);
+        overlay.on("click", (e) => {
+          if (e.target === overlay[0]) {
+            dismiss();
+          }
+        });
+        box.append(close);
+        overlay.append(box);
+        $("body").append(overlay);
+      }
+
+      // Save an online order
+      saveOrderToDatabase(formData) {
+        this.setOrderButtonsBusy(true, "Processing...");
+
+        this.placeOrder(formData, "online")
+          .done((response) => {
+            if (response && response.success) {
+              this.setOrderButtonsBusy(false);
+              this.showOrderSuccess(response.data);
+            } else {
+              this.orderRequestId = null;
+              this.setOrderButtonsBusy(false);
+              alert(this.orderErrorMessage(response));
+            }
+          })
+          .fail(() => {
+            this.setOrderButtonsBusy(false);
+            alert("Error connecting to server. Please try again.");
+          });
       }
     }
 

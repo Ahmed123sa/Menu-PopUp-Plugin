@@ -555,9 +555,10 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     const itemsPreview = order.items.slice(0, 3).map(item => item.name).join(', ');
                     const itemsText = order.items.length > 3 ? itemsPreview + '...' : itemsPreview;
 
-                    const deliveryMark = order.customer_address ? ' 🚚' : ' 🛍️';
+                    const rowType = order.order_type || (order.customer_address ? 'delivery' : 'pickup');
+                    const deliveryMark = (rowType === 'delivery' ? ' 🚚' : ' 🛍️') + (order.needs_review === '1' ? ' ⚠️' : '');
                     html += `
-                        <tr data-order-type="${order.customer_address ? 'delivery' : 'pickup'}">
+                        <tr data-order-type="${rowType}">
                             <td>#${order.order_number}${deliveryMark}</td>
                             <td>
                                 <strong>${order.customer_name}</strong><br>
@@ -790,6 +791,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                             <p><strong>Phone:</strong> ${order.customer_phone}</p>
                             ${order.customer_email ? `<p><strong>Email:</strong> ${order.customer_email}</p>` : ''}
                             ${order.customer_address ? `<p><strong>Address:</strong> ${order.customer_address}</p>` : ''}
+                            ${order.order_type ? `<p><strong>Type:</strong> ${order.order_type === 'delivery' ? 'Delivery 🚚' : 'Pickup 🛍️'}</p>` : ''}
+                            ${order.delivery_zone ? `<p><strong>Delivery Zone:</strong> ${order.delivery_zone}</p>` : ''}
+                            ${order.delivery_details ? `<p><strong>Address Details:</strong> ${order.delivery_details}</p>` : ''}
+                            ${order.order_source === 'whatsapp' ? `<p><strong>Source:</strong> WhatsApp</p>` : ''}
+                            ${order.needs_review === '1' ? `<p style="color:#b45309"><strong>⚠️ Placed from an outdated page: prices came from the browser. Please check the total.</strong></p>` : ''}
                             <p><strong>Date:</strong> ${order.date}</p>
                             <p><strong>Status:</strong> <span class="order-status status-${order.status}">${order.status}</span></p>
                         </div>
@@ -808,6 +814,7 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                                 <span>Tax:</span>
                                 <span>${order.currency_symbol}${order.tax}</span>
                             </div>
+                            ${parseFloat(order.delivery_fee) > 0 ? `<div class="order-summary-row"><span>Delivery Fee:</span><span>${order.currency_symbol}${order.delivery_fee}</span></div>` : ''}
                             <div class="order-summary-row">
                                 <strong>Total:</strong>
                                 <strong>${order.currency_symbol}${order.total}</strong>
@@ -1210,6 +1217,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'payment_status_badge' => $payment_status_badge,
                     'date' => get_the_date('Y-m-d H:i'),
                     'special_instructions' => get_post_meta($order_id, '_special_instructions', true),
+                    'order_type' => get_post_meta($order_id, '_order_type', true),
+                    'delivery_fee' => get_post_meta($order_id, '_delivery_fee', true),
+                    'delivery_zone' => get_post_meta($order_id, '_delivery_zone_name', true),
+                    'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
+                    'order_source' => get_post_meta($order_id, '_order_source', true),
+                    'needs_review' => get_post_meta($order_id, '_needs_review', true),
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
             }
@@ -1235,6 +1248,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'status' => get_post_meta($order_id, '_order_status', true) ?: 'delivered',
                     'date' => get_the_date('Y-m-d H:i'),
                     'special_instructions' => get_post_meta($order_id, '_special_instructions', true),
+                    'order_type' => get_post_meta($order_id, '_order_type', true),
+                    'delivery_fee' => get_post_meta($order_id, '_delivery_fee', true),
+                    'delivery_zone' => get_post_meta($order_id, '_delivery_zone_name', true),
+                    'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
+                    'order_source' => get_post_meta($order_id, '_order_source', true),
+                    'needs_review' => get_post_meta($order_id, '_needs_review', true),
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
             }
@@ -1325,6 +1344,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'status' => get_post_meta($order_id, '_order_status', true) ?: 'pending',
                     'date' => get_the_date('Y-m-d H:i'),
                     'special_instructions' => get_post_meta($order_id, '_special_instructions', true),
+                    'order_type' => get_post_meta($order_id, '_order_type', true),
+                    'delivery_fee' => get_post_meta($order_id, '_delivery_fee', true),
+                    'delivery_zone' => get_post_meta($order_id, '_delivery_zone_name', true),
+                    'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
+                    'order_source' => get_post_meta($order_id, '_order_source', true),
+                    'needs_review' => get_post_meta($order_id, '_needs_review', true),
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
 
@@ -1439,6 +1464,10 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
             update_post_meta($order_id, '_order_total', floatval($order_data['total']));
             update_post_meta($order_id, '_order_status', 'pending');
             update_post_meta($order_id, '_currency_symbol', sanitize_text_field($order_data['currency_symbol']));
+
+            // Orders sent by an outdated page keep client-side prices; flag them for review
+            update_post_meta($order_id, '_order_source', 'legacy');
+            update_post_meta($order_id, '_needs_review', '1');
             
             // Save payment method
             if (!empty($order_data['payment_method'])) {
@@ -1485,6 +1514,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
             'payment_status' => get_post_meta($order_id, '_payment_status', true) ?: 'pending',
             'date' => get_the_date('Y-m-d H:i', $order_id),
             'special_instructions' => get_post_meta($order_id, '_special_instructions', true),
+            'order_type' => get_post_meta($order_id, '_order_type', true),
+            'delivery_fee' => get_post_meta($order_id, '_delivery_fee', true),
+            'delivery_zone' => get_post_meta($order_id, '_delivery_zone_name', true),
+            'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
+            'order_source' => get_post_meta($order_id, '_order_source', true),
+            'needs_review' => get_post_meta($order_id, '_needs_review', true),
             'currency_symbol' => get_post_meta($order_id, '_currency_symbol', true) ?: '$'
         );
 
@@ -2027,6 +2062,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'status' => get_post_meta($order_id, '_order_status', true) ?: 'pending',
                     'date' => get_the_date('Y-m-d H:i'),
                     'special_instructions' => get_post_meta($order_id, '_special_instructions', true),
+                    'order_type' => get_post_meta($order_id, '_order_type', true),
+                    'delivery_fee' => get_post_meta($order_id, '_delivery_fee', true),
+                    'delivery_zone' => get_post_meta($order_id, '_delivery_zone_name', true),
+                    'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
+                    'order_source' => get_post_meta($order_id, '_order_source', true),
+                    'needs_review' => get_post_meta($order_id, '_needs_review', true),
                     'currency_symbol' => get_post_meta($order_id, '_currency_symbol', true) ?: '$',
                     'modified' => get_the_modified_time('U')
                 );
@@ -2093,7 +2134,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
             'Total',
             'Status',
             'Date',
-            'Special Instructions'
+            'Special Instructions',
+            'Order Type',
+            'Delivery Fee',
+            'Delivery Zone',
+            'Source',
+            'Needs Review'
         );
 
         if ($query->have_posts()) {
@@ -2115,6 +2161,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                 $date = get_the_date('Y-m-d H:i', $order_id);
                 $special_instructions = get_post_meta($order_id, '_special_instructions', true);
                 $currency_symbol = get_post_meta($order_id, '_currency_symbol', true) ?: '$';
+                $order_type = get_post_meta($order_id, '_order_type', true);
+                $delivery_fee = get_post_meta($order_id, '_delivery_fee', true);
+                $delivery_zone = get_post_meta($order_id, '_delivery_zone_name', true);
+                $order_source = get_post_meta($order_id, '_order_source', true);
+                $needs_review = get_post_meta($order_id, '_needs_review', true) === '1' ? 'yes' : '';
 
                 // Format items for CSV
                 $items_text = '';
@@ -2142,7 +2193,12 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     $currency_symbol . $total,
                     $status,
                     $date,
-                    $special_instructions
+                    $special_instructions,
+                    $order_type,
+                    $delivery_fee === '' ? '' : $currency_symbol . $delivery_fee,
+                    $delivery_zone,
+                    $order_source,
+                    $needs_review
                 );
             }
         }

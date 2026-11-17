@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.1.0
+ * Version: 7.2.0
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.1.0');
+define('MENU_POPUP_VERSION', '7.2.0');
 
 /**
  * Main Plugin Class
@@ -84,6 +84,9 @@ class Menu_Popup_Plugin
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-checker.php';
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-ajax.php';
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-admin.php';
+
+        // Include Order Service (server-side pricing and order creation)
+        require_once plugin_dir_path(__FILE__) . 'includes/orders/class-order-service.php';
     }
 
     /**
@@ -140,6 +143,9 @@ class Menu_Popup_Plugin
 
         $delivery_zone_admin = Menu_Popup_Admin_Delivery_Zones::get_instance();
         $delivery_zone_admin->init();
+
+        // Initialize Order Service
+        Menu_Popup_Order_Service::get_instance()->init();
 
         // Enqueue frontend zone checker script
         add_action('wp_enqueue_scripts', array($this, 'enqueue_delivery_zone_scripts'));

@@ -142,6 +142,13 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         }
 
 
+        // Are any delivery zones set up at all? (decides map delivery vs the older zone list)
+        $delivery_zones_exist = false;
+        if (class_exists('Menu_Popup_Delivery_Zone_Model')) {
+            $zone_model = new Menu_Popup_Delivery_Zone_Model();
+            $delivery_zones_exist = !empty($zone_model->get_active_map_zones());
+        }
+
         // Localize script for AJAX
         wp_localize_script('menu-popup-frontend', 'menuPopupAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
@@ -181,9 +188,17 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             // Video autoplay setting
             'enableVideoAutoplay' => get_option('menu_popup_enable_video_autoplay', '0'),
             // Geo zone detection
-            'geoCheckEnabled'  => get_option('menu_popup_geo_zone_check', '1'), // on by default
+            'geoCheckEnabled'  => (class_exists('Menu_Popup_Delivery_Zone_Model') && Menu_Popup_Delivery_Zone_Model::mode() === 'map') ? '1' : '0',
+            'deliveryMode'     => class_exists('Menu_Popup_Delivery_Zone_Model') ? Menu_Popup_Delivery_Zone_Model::mode() : 'manual',
             'geoZoneNonce'     => wp_create_nonce('mp_delivery_zone_nonce'),
             'activeBranchId'   => $active_branch_id,
+            // Delivery by map
+            'mapsApiKey'       => get_option('menu_popup_google_maps_api_key', ''),
+            'mapCenter'        => array(
+                'lat' => (float) get_option('menu_popup_map_default_lat', '30.0444'),
+                'lng' => (float) get_option('menu_popup_map_default_lng', '31.2357'),
+            ),
+            'zonesConfigured'  => !empty($delivery_zones_exist) ? '1' : '0',
         ));
     }
 

@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.2.0
+ * Version: 7.3.0
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.2.0');
+define('MENU_POPUP_VERSION', '7.3.0');
 
 /**
  * Main Plugin Class
@@ -82,6 +82,7 @@ class Menu_Popup_Plugin
         // Include Delivery Zone System
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-model.php';
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-checker.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-resolver.php';
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-ajax.php';
         require_once plugin_dir_path(__FILE__) . 'includes/delivery/class-delivery-zone-admin.php';
 
@@ -155,6 +156,9 @@ class Menu_Popup_Plugin
     {
         // Load text domain for internationalization
         load_plugin_textdomain('menu-popup', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+
+        // Bring the delivery zones table up to date when the plugin files were replaced
+        Menu_Popup_Delivery_Zone_Model::maybe_upgrade();
     }
 
     public function menu_popup_shortcode($atts)
@@ -239,8 +243,8 @@ class Menu_Popup_Plugin
         }
 
         wp_enqueue_script(
-            'mp-delivery-zone-checker',
-            MENU_POPUP_PLUGIN_URL . 'assets/js/delivery-zone-checker.js',
+            'mp-delivery-map',
+            MENU_POPUP_PLUGIN_URL . 'assets/js/delivery-map.js',
             array('jquery', 'menu-popup-frontend'),   // runs after menuPopupAjax is localised
             MENU_POPUP_VERSION,
             true

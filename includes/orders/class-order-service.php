@@ -118,15 +118,7 @@ class Menu_Popup_Order_Service {
             return $lines;
         }
 
-        $subtotal = 0.0;
-        foreach ($lines as $line) {
-            $subtotal += $line['line_total'];
-        }
-        $subtotal = round($subtotal, 2);
-
-        $tax_rate = (float) get_option('menu_popup_tax_rate', '0');
-        $tax_rate = max(0.0, min(100.0, $tax_rate));
-        $tax      = round($subtotal * $tax_rate / 100, 2);
+        list($subtotal, $tax) = $this->compute_totals($lines);
 
         // --- customer -----------------------------------------------------
         $customer = $this->read_customer($in);
@@ -142,6 +134,8 @@ class Menu_Popup_Order_Service {
             'lat'       => '',
             'lng'       => '',
             'details'   => '',
+            'distance'  => '',
+            'eta'       => 0,
         );
 
         if ($order_type === 'delivery') {
@@ -149,23 +143,73 @@ class Menu_Popup_Order_Service {
                 return new WP_Error('missing_address', __('Please enter your delivery address.', 'menu-popup'));
             }
 
-            $zone = $this->resolve_zone(isset($in['delivery_zone']) ? absint($in['delivery_zone']) : 0, $branch_id, $subtotal, $tax);
-            if (is_wp_error($zone)) {
-                return $zone;
-            }
-            $delivery['zone_id']   = $zone['id'];
-            $delivery['zone_name'] = $zone['name'];
-            $delivery['fee']       = $zone['fee'];
-            if ($branch_id === 0 && $zone['branch_id'] > 0) {
-                $branch_id = $zone['branch_id'];
-            }
+            $has_pin = isset($in['delivery_lat'], $in['delivery_lng']) && is_numeric($in['delivery_lat']) && is_numeric($in['delivery_lng'])
+                && (float) $in['delivery_lat'] >= -90 && (float) $in['delivery_lat'] <= 90
+                && (float) $in['delivery_lng'] >= -180 && (float) $in['delivery_lng'] <= 180;
 
-            if (isset($in['delivery_lat'], $in['delivery_lng']) && is_numeric($in['delivery_lat']) && is_numeric($in['delivery_lng'])) {
+            if ($this->uses_map_delivery()) {
+                // The pin decides the branch, zone and fee. Nothing the browser says about them is trusted.
+                if (!$has_pin) {
+                    return new WP_Error('location_required', __('Please pin your delivery location on the map.', 'menu-popup'));
+                }
+
                 $lat = (float) $in['delivery_lat'];
                 $lng = (float) $in['delivery_lng'];
-                if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
-                    $delivery['lat'] = (string) round($lat, 7);
-                    $delivery['lng'] = (string) round($lng, 7);
+
+                $quote = Menu_Popup_Delivery_Resolver::resolve($lat, $lng, $subtotal + $tax, $branch_id);
+                if (empty($quote['ok'])) {
+                    return new WP_Error('outside_area', $quote['message']);
+                }
+
+                // The address can belong to another branch than the one the menu was opened from
+                if ($quote['branch_id'] > 0 && $quote['branch_id'] !== $branch_id) {
+                    $branch_id = $quote['branch_id'];
+                    $lines     = $this->build_lines(isset($in['items']) ? $in['items'] : array(), $branch_id);
+                    if (is_wp_error($lines)) {
+                        return $lines;
+                    }
+                    list($subtotal, $tax) = $this->compute_totals($lines);
+
+                    $quote = Menu_Popup_Delivery_Resolver::resolve($lat, $lng, $subtotal + $tax, $branch_id);
+                    if (empty($quote['ok'])) {
+                        return new WP_Error('outside_area', $quote['message']);
+                    }
+                }
+
+                if ($quote['min_order'] > 0 && ($subtotal + $tax) < $quote['min_order']) {
+                    $symbol = (string) get_option('menu_popup_currency_symbol', '$');
+                    return new WP_Error('min_order', sprintf(
+                        /* translators: 1: currency symbol, 2: minimum order, 3: current total */
+                        __('Minimum order for your area is %1$s%2$s. Your current total is %1$s%3$s.', 'menu-popup'),
+                        $symbol,
+                        number_format($quote['min_order'], 2, '.', ''),
+                        number_format($subtotal + $tax, 2, '.', '')
+                    ));
+                }
+
+                $delivery['zone_id']   = $quote['zone_id'];
+                $delivery['zone_name'] = $quote['zone_name'];
+                $delivery['fee']       = $quote['fee'];
+                $delivery['distance']  = (string) $quote['distance_km'];
+                $delivery['eta']       = $quote['eta'];
+                $delivery['lat']       = (string) round($lat, 7);
+                $delivery['lng']       = (string) round($lng, 7);
+            } else {
+                // Map delivery is off or no zones exist: the older zone-by-id path
+                $zone = $this->resolve_zone(isset($in['delivery_zone']) ? absint($in['delivery_zone']) : 0, $branch_id, $subtotal, $tax);
+                if (is_wp_error($zone)) {
+                    return $zone;
+                }
+                $delivery['zone_id']   = $zone['id'];
+                $delivery['zone_name'] = $zone['name'];
+                $delivery['fee']       = $zone['fee'];
+                if ($branch_id === 0 && $zone['branch_id'] > 0) {
+                    $branch_id = $zone['branch_id'];
+                }
+
+                if ($has_pin) {
+                    $delivery['lat'] = (string) round((float) $in['delivery_lat'], 7);
+                    $delivery['lng'] = (string) round((float) $in['delivery_lng'], 7);
                 }
             }
             if (isset($in['address_details'])) {
@@ -235,6 +279,12 @@ class Menu_Popup_Order_Service {
             if ($delivery['details'] !== '') {
                 update_post_meta($order_id, '_delivery_address_details', $delivery['details']);
             }
+            if ($delivery['distance'] !== '') {
+                update_post_meta($order_id, '_delivery_distance_km', $delivery['distance']);
+            }
+            if ($delivery['eta'] > 0) {
+                update_post_meta($order_id, '_delivery_eta_minutes', $delivery['eta']);
+            }
         }
 
         if ($payment_method !== '') {
@@ -254,6 +304,7 @@ class Menu_Popup_Order_Service {
             'tax'             => $tax,
             'delivery_fee'    => $delivery['fee'],
             'delivery_zone'   => $delivery['zone_name'],
+            'delivery_eta'    => $delivery['eta'],
             'total'           => $total,
             'currency_symbol' => $currency,
             'payment_method'  => $payment_method,
@@ -369,7 +420,14 @@ class Menu_Popup_Order_Service {
         $item_branch = get_post_meta($id, '_menu_item_branch', true);
         if ($branch_id > 0 && $item_branch !== '' && absint($item_branch) !== $branch_id) {
             $this->log_rejected($id, $size, 'branch mismatch item=' . $item_branch . ' order=' . $branch_id);
-            return $unavailable;
+            $branch_name = (string) get_the_title($branch_id);
+            $item_name   = (string) get_post_meta($id, '_menu_item_name', true);
+            return new WP_Error('item_unavailable', sprintf(
+                /* translators: 1: item name, 2: branch name */
+                __('"%1$s" is not available at %2$s, the branch that serves your address. Please remove it from your cart or choose pickup.', 'menu-popup'),
+                $item_name !== '' ? $item_name : $post->post_title,
+                $branch_name !== '' ? $branch_name : __('that branch', 'menu-popup')
+            ));
         }
 
         $catalog_name = (string) get_post_meta($id, '_menu_item_name', true);
@@ -470,7 +528,7 @@ class Menu_Popup_Order_Service {
 
         if ($zone_id === 0) {
             // Sites with no zones configured keep delivering with no zone and no fee.
-            if (empty($model->get_by_branch($branch_id, true))) {
+            if (empty(Menu_Popup_Zone_Checker::get_vendor_zones($branch_id))) {
                 return array('id' => 0, 'name' => '', 'fee' => 0.0, 'branch_id' => 0);
             }
             return new WP_Error('zone_required', __('Please select your delivery zone.', 'menu-popup'));
@@ -478,6 +536,12 @@ class Menu_Popup_Order_Service {
 
         $zone = $model->get($zone_id);
         if (!$zone || (int) $zone['is_active'] !== 1) {
+            return new WP_Error('invalid_zone', __('The selected delivery zone is not available.', 'menu-popup'));
+        }
+
+        // The zone must belong to the delivery mode in use, and not be paused
+        $zone_is_manual = !empty($zone['is_manual']);
+        if ($zone_is_manual !== (Menu_Popup_Delivery_Zone_Model::mode() === 'manual') || !empty($zone['is_paused'])) {
             return new WP_Error('invalid_zone', __('The selected delivery zone is not available.', 'menu-popup'));
         }
 
@@ -509,6 +573,37 @@ class Menu_Popup_Order_Service {
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
+
+    /**
+     * @return array [subtotal, tax]
+     */
+    private function compute_totals(array $lines) {
+        $subtotal = 0.0;
+        foreach ($lines as $line) {
+            $subtotal += $line['line_total'];
+        }
+        $subtotal = round($subtotal, 2);
+
+        $tax_rate = (float) get_option('menu_popup_tax_rate', '0');
+        $tax_rate = max(0.0, min(100.0, $tax_rate));
+
+        return array($subtotal, round($subtotal * $tax_rate / 100, 2));
+    }
+
+    /**
+     * Map delivery applies when the setting is on and at least one zone exists.
+     */
+    private function uses_map_delivery() {
+        if (!class_exists('Menu_Popup_Delivery_Zone_Model') || Menu_Popup_Delivery_Zone_Model::mode() !== 'map') {
+            return false;
+        }
+        if (!class_exists('Menu_Popup_Delivery_Resolver') || !class_exists('Menu_Popup_Delivery_Zone_Model')) {
+            return false;
+        }
+
+        $model = new Menu_Popup_Delivery_Zone_Model();
+        return !empty($model->get_active_map_zones());
+    }
 
     private function log_rejected($id, $size, $reason) {
         if (defined('WP_DEBUG') && WP_DEBUG) {

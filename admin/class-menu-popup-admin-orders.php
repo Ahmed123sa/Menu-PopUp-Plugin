@@ -794,6 +794,8 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                             ${order.order_type ? `<p><strong>Type:</strong> ${order.order_type === 'delivery' ? 'Delivery 🚚' : 'Pickup 🛍️'}</p>` : ''}
                             ${order.delivery_zone ? `<p><strong>Delivery Zone:</strong> ${order.delivery_zone}</p>` : ''}
                             ${order.delivery_details ? `<p><strong>Address Details:</strong> ${order.delivery_details}</p>` : ''}
+                            ${order.branch_name ? `<p><strong>Branch:</strong> ${order.branch_name}</p>` : ''}
+                            ${order.delivery_lat ? `<p><strong>Map:</strong> <a href="https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}" target="_blank" rel="noopener">Open location in Google Maps</a>${order.delivery_distance ? ` (${order.delivery_distance} km)` : ''}${order.delivery_eta ? ` · ETA ${order.delivery_eta} min` : ''}</p>` : ''}
                             ${order.order_source === 'whatsapp' ? `<p><strong>Source:</strong> WhatsApp</p>` : ''}
                             ${order.needs_review === '1' ? `<p style="color:#b45309"><strong>⚠️ Placed from an outdated page: prices came from the browser. Please check the total.</strong></p>` : ''}
                             <p><strong>Date:</strong> ${order.date}</p>
@@ -1223,6 +1225,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
                     'order_source' => get_post_meta($order_id, '_order_source', true),
                     'needs_review' => get_post_meta($order_id, '_needs_review', true),
+                    'delivery_lat' => get_post_meta($order_id, '_delivery_lat', true),
+                    'delivery_lng' => get_post_meta($order_id, '_delivery_lng', true),
+                    'delivery_distance' => get_post_meta($order_id, '_delivery_distance_km', true),
+                    'delivery_eta' => get_post_meta($order_id, '_delivery_eta_minutes', true),
+                    'branch_name' => get_post_meta($order_id, '_branch_id', true) ? get_the_title((int) get_post_meta($order_id, '_branch_id', true)) : '',
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
             }
@@ -1254,6 +1261,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
                     'order_source' => get_post_meta($order_id, '_order_source', true),
                     'needs_review' => get_post_meta($order_id, '_needs_review', true),
+                    'delivery_lat' => get_post_meta($order_id, '_delivery_lat', true),
+                    'delivery_lng' => get_post_meta($order_id, '_delivery_lng', true),
+                    'delivery_distance' => get_post_meta($order_id, '_delivery_distance_km', true),
+                    'delivery_eta' => get_post_meta($order_id, '_delivery_eta_minutes', true),
+                    'branch_name' => get_post_meta($order_id, '_branch_id', true) ? get_the_title((int) get_post_meta($order_id, '_branch_id', true)) : '',
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
             }
@@ -1350,6 +1362,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
                     'order_source' => get_post_meta($order_id, '_order_source', true),
                     'needs_review' => get_post_meta($order_id, '_needs_review', true),
+                    'delivery_lat' => get_post_meta($order_id, '_delivery_lat', true),
+                    'delivery_lng' => get_post_meta($order_id, '_delivery_lng', true),
+                    'delivery_distance' => get_post_meta($order_id, '_delivery_distance_km', true),
+                    'delivery_eta' => get_post_meta($order_id, '_delivery_eta_minutes', true),
+                    'branch_name' => get_post_meta($order_id, '_branch_id', true) ? get_the_title((int) get_post_meta($order_id, '_branch_id', true)) : '',
                     'currency_symbol' => get_option('menu_popup_currency_symbol', '$')
                 );
 
@@ -1520,6 +1537,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
             'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
             'order_source' => get_post_meta($order_id, '_order_source', true),
             'needs_review' => get_post_meta($order_id, '_needs_review', true),
+            'delivery_lat' => get_post_meta($order_id, '_delivery_lat', true),
+            'delivery_lng' => get_post_meta($order_id, '_delivery_lng', true),
+            'delivery_distance' => get_post_meta($order_id, '_delivery_distance_km', true),
+            'delivery_eta' => get_post_meta($order_id, '_delivery_eta_minutes', true),
+            'branch_name' => get_post_meta($order_id, '_branch_id', true) ? get_the_title((int) get_post_meta($order_id, '_branch_id', true)) : '',
             'currency_symbol' => get_post_meta($order_id, '_currency_symbol', true) ?: '$'
         );
 
@@ -2068,6 +2090,11 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
                     'delivery_details' => get_post_meta($order_id, '_delivery_address_details', true),
                     'order_source' => get_post_meta($order_id, '_order_source', true),
                     'needs_review' => get_post_meta($order_id, '_needs_review', true),
+                    'delivery_lat' => get_post_meta($order_id, '_delivery_lat', true),
+                    'delivery_lng' => get_post_meta($order_id, '_delivery_lng', true),
+                    'delivery_distance' => get_post_meta($order_id, '_delivery_distance_km', true),
+                    'delivery_eta' => get_post_meta($order_id, '_delivery_eta_minutes', true),
+                    'branch_name' => get_post_meta($order_id, '_branch_id', true) ? get_the_title((int) get_post_meta($order_id, '_branch_id', true)) : '',
                     'currency_symbol' => get_post_meta($order_id, '_currency_symbol', true) ?: '$',
                     'modified' => get_the_modified_time('U')
                 );

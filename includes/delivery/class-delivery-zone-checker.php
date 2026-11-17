@@ -41,9 +41,16 @@ class Menu_Popup_Zone_Checker {
     public static function get_vendor_zones( int $branch_id ): array {
 
 
-        $model = new Menu_Popup_Delivery_Zone_Model();
+        $model  = new Menu_Popup_Delivery_Zone_Model();
+        $manual = Menu_Popup_Delivery_Zone_Model::mode() === 'manual';
 
-        return $model->get_by_branch( $branch_id, true );
+        // Only the zones that belong to the current delivery mode, and not the paused ones
+        return array_values( array_filter(
+            $model->get_by_branch( $branch_id, true ),
+            static function ( $z ) use ( $manual ) {
+                return ! empty( $z['is_manual'] ) === $manual && empty( $z['is_paused'] );
+            }
+        ) );
     }
 
     /**

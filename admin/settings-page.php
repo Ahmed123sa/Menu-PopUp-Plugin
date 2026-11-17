@@ -989,6 +989,36 @@ class Menu_Popup_Settings {
 
         register_setting(
             'menu_popup_settings_group',
+            'menu_popup_delivery_mode',
+            array(
+                'type' => 'string',
+                'default' => 'manual',
+                'sanitize_callback' => array($this, 'sanitize_delivery_mode')
+            )
+        );
+
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_map_default_lat',
+            array(
+                'type' => 'string',
+                'default' => '30.0444',
+                'sanitize_callback' => array($this, 'sanitize_map_coordinate_lat')
+            )
+        );
+
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_map_default_lng',
+            array(
+                'type' => 'string',
+                'default' => '31.2357',
+                'sanitize_callback' => array($this, 'sanitize_map_coordinate_lng')
+            )
+        );
+
+        register_setting(
+            'menu_popup_settings_group',
             'menu_popup_google_maps_api_key',
             array(
                 'type' => 'string',
@@ -1627,6 +1657,22 @@ class Menu_Popup_Settings {
             'menu_popup_google_maps_api_key',
             __('Google Maps API Key', 'menu-popup'),
             array($this, 'google_maps_api_key_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_general_settings'
+        );
+
+        add_settings_field(
+            'menu_popup_delivery_mode',
+            __('Delivery Zones Mode', 'menu-popup'),
+            array($this, 'geo_zone_check_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_general_settings'
+        );
+
+        add_settings_field(
+            'menu_popup_map_default_center',
+            __('Default Map Center', 'menu-popup'),
+            array($this, 'map_default_center_field_callback'),
             'menu_popup_settings_group',
             'menu_popup_general_settings'
         );
@@ -2510,11 +2556,54 @@ class Menu_Popup_Settings {
         ?>
         <input type="text" id="menu_popup_google_maps_api_key" name="menu_popup_google_maps_api_key" value="<?php echo esc_attr($value); ?>" class="regular-text" />
         <p class="description">
-            <?php _e('Required to enable the visual map editor in the Delivery Zones manager.', 'menu-popup'); ?>
+            <?php _e('Used by the Delivery Zones editor and by the map customers see when ordering delivery. Enable Maps JavaScript API and Geocoding API (and Places API for address suggestions), and restrict the key to your website address.', 'menu-popup'); ?>
             <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank"><?php _e('Get an API key here', 'menu-popup'); ?></a>. 
             <?php _e('(Ensure the Maps JavaScript API is enabled)', 'menu-popup'); ?>
         </p>
         <?php
+    }
+
+    public function geo_zone_check_field_callback() {
+        $value = get_option('menu_popup_delivery_mode', 'manual') === 'map' ? 'map' : 'manual';
+        ?>
+        <label style="display:block;margin-bottom:6px;">
+            <input type="radio" name="menu_popup_delivery_mode" value="manual" <?php checked($value, 'manual'); ?> />
+            <strong><?php _e('Manual zones', 'menu-popup'); ?></strong>
+            &mdash; <?php _e('You add zones by name with a fixed fee, and the customer picks one from a list. No map needed.', 'menu-popup'); ?>
+        </label>
+        <label style="display:block;">
+            <input type="radio" name="menu_popup_delivery_mode" value="map" <?php checked($value, 'map'); ?> />
+            <strong><?php _e('By map', 'menu-popup'); ?></strong>
+            &mdash; <?php _e('The customer drops a pin on a map. The branch, fee and minimum order come from the zones you drew. Needs a Google Maps key.', 'menu-popup'); ?>
+        </label>
+        <p class="description">
+            <?php _e('Only one mode works at a time. Each mode keeps its own zones. If "Enable Delivery Options" above is off, there is no delivery at all.', 'menu-popup'); ?>
+        </p>
+        <?php
+    }
+
+    public function sanitize_delivery_mode($value) {
+        return $value === 'map' ? 'map' : 'manual';
+    }
+
+    public function map_default_center_field_callback() {
+        $lat = get_option('menu_popup_map_default_lat', '30.0444');
+        $lng = get_option('menu_popup_map_default_lng', '31.2357');
+        ?>
+        <input type="number" step="any" name="menu_popup_map_default_lat" value="<?php echo esc_attr($lat); ?>" class="small-text" style="width:120px" placeholder="30.0444" />
+        <input type="number" step="any" name="menu_popup_map_default_lng" value="<?php echo esc_attr($lng); ?>" class="small-text" style="width:120px" placeholder="31.2357" />
+        <p class="description">
+            <?php _e('Where the map opens for a customer who has not chosen a location before (latitude, longitude). Default is Cairo.', 'menu-popup'); ?>
+        </p>
+        <?php
+    }
+
+    public function sanitize_map_coordinate_lat($value) {
+        return is_numeric($value) && $value >= -90 && $value <= 90 ? (string) (float) $value : '30.0444';
+    }
+
+    public function sanitize_map_coordinate_lng($value) {
+        return is_numeric($value) && $value >= -180 && $value <= 180 ? (string) (float) $value : '31.2357';
     }
 
     // Customer Fields Callbacks

@@ -2266,13 +2266,43 @@
           selectedOrderType === "delivery" &&
           menuPopupAjax.deliveryEnabled === "1"
         ) {
-          const zoneField = $("#confirmation_delivery_zone");
-          if (!zoneField.val()) {
-            isValid = false;
-            errorMessage += "Please select a delivery zone.\n";
-            zoneField.addClass("error");
+          if (window.mpDelivery && window.mpDelivery.isMapMode()) {
+            // Map delivery: a valid pin inside a delivery area is required
+            const quote = window.mpDelivery.quote();
+            if (!window.mpDelivery.hasPin()) {
+              isValid = false;
+              errorMessage += "Please choose your delivery location on the map.\n";
+            } else if (!quote) {
+              isValid = false;
+              errorMessage += "Still checking delivery for your location, please try again in a moment.\n";
+            } else if (!quote.ok) {
+              isValid = false;
+              errorMessage += quote.message + "\n";
+            } else if (quote.min_order > 0) {
+              const cartSub = Object.values(this.cart).reduce(
+                (sum, item) => sum + item.price * item.quantity,
+                0
+              );
+              const cartTotal =
+                cartSub + cartSub * (parseFloat(menuPopupAjax.taxRate || 0) / 100);
+              if (cartTotal < quote.min_order) {
+                isValid = false;
+                errorMessage +=
+                  "Minimum order for your area is " +
+                  menuPopupAjax.currencySymbol +
+                  Number(quote.min_order).toFixed(2) +
+                  ".\n";
+              }
+            }
           } else {
-            zoneField.removeClass("error");
+            const zoneField = $("#confirmation_delivery_zone");
+            if (!zoneField.val()) {
+              isValid = false;
+              errorMessage += "Please select a delivery zone.\n";
+              zoneField.addClass("error");
+            } else {
+              zoneField.removeClass("error");
+            }
           }
 
           const addressField = $("#confirmation_customer_address");
@@ -2670,6 +2700,22 @@
 
         this.renderOrderReview();
         reviewModal.addClass("active");
+
+        // Re-quote with the final cart value (free-delivery thresholds depend on it)
+        if (
+          selectedType === "delivery" &&
+          window.mpDelivery &&
+          window.mpDelivery.isMapMode() &&
+          window.mpDelivery.hasPin()
+        ) {
+          const cartSub = Object.values(this.cart).reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+          );
+          window.mpDelivery.refresh(
+            cartSub + cartSub * (parseFloat(menuPopupAjax.taxRate || 0) / 100)
+          );
+        }
       }
 
       renderOrderReview() {
@@ -2707,8 +2753,21 @@
 
         // Calculate delivery fee if delivery is selected
         if (this.selected_order_type === "delivery") {
+          // Map delivery: the fee comes from the server quote for the pinned location
+          const mapQuote =
+            window.mpDelivery && window.mpDelivery.isMapMode()
+              ? window.mpDelivery.quote()
+              : null;
+          if (mapQuote && mapQuote.ok) {
+            deliveryFee = parseFloat(mapQuote.fee || 0);
+            selectedZoneName = mapQuote.zone_name || "";
+          }
+
           // Get the selected zone from the confirmation modal
-          const selectedZoneId = $("#confirmation_delivery_zone").val();
+          const selectedZoneId =
+            window.mpDelivery && window.mpDelivery.isMapMode()
+              ? ""
+              : $("#confirmation_delivery_zone").val();
 
           if (
             selectedZoneId &&
@@ -3105,6 +3164,12 @@
               }
               if (formData.customer_address) {
                 message += `📍 Address: ${formData.customer_address}\n`;
+              }
+              if (formData.address_details) {
+                message += `🏢 Details: ${formData.address_details}\n`;
+              }
+              if (formData.delivery_lat !== undefined && formData.delivery_lat !== "") {
+                message += `🗺️ Map: https://www.google.com/maps?q=${formData.delivery_lat},${formData.delivery_lng}\n`;
               }
             }
 
@@ -3574,6 +3639,7 @@
           delivery_zone: $("#confirmation_delivery_zone").val(),
           special_instructions: $("#confirmation_special_instructions").val(),
         };
+        Object.assign(formData, this.deliveryExtras(formData));
 
         // Send via WhatsApp
         this.sendOrderViaWhatsApp(formData);
@@ -3596,6 +3662,7 @@
           special_instructions: $("#confirmation_special_instructions").val(),
           payment_method: selectedPaymentMethod || "",
         };
+        Object.assign(formData, this.deliveryExtras(formData));
 
         // Process order based on payment method
         if (!selectedPaymentMethod) {
@@ -3659,6 +3726,18 @@
         });
       }
 
+      // Delivery pin details for the order request (map delivery only)
+      deliveryExtras(formData) {
+        if (
+          formData.order_type === "delivery" &&
+          window.mpDelivery &&
+          window.mpDelivery.isMapMode()
+        ) {
+          return window.mpDelivery.extras();
+        }
+        return {};
+      }
+
       // Send the order to the server. Returns the jQuery request.
       placeOrder(formData, source) {
         if (!this.orderRequestId) {
@@ -3682,6 +3761,11 @@
               customer_email: formData.customer_email || "",
               customer_address: formData.customer_address || "",
               delivery_zone: formData.delivery_zone || "",
+              delivery_lat:
+                formData.delivery_lat !== undefined ? formData.delivery_lat : "",
+              delivery_lng:
+                formData.delivery_lng !== undefined ? formData.delivery_lng : "",
+              address_details: formData.address_details || "",
               special_instructions: formData.special_instructions || "",
               payment_method: formData.payment_method || "",
               items: this.getCartLines(),
@@ -3851,6 +3935,9 @@
           box.append(row("Delivery Fee", money(result.delivery_fee)));
         }
         box.append(row("Total", money(result.total), "mp-os-total"));
+        if (result.order_type === "delivery" && Number(result.delivery_eta) > 0) {
+          box.append(row("Estimated delivery", "about " + result.delivery_eta + " min"));
+        }
 
         const close = $('<button type="button"></button>').text("Close");
         const dismiss = () => overlay.remove();
@@ -3890,6 +3977,13 @@
     // Initialize when DOM is ready
     $(document).ready(() => {
       window.menuPopup = new MenuPopup();
+
+      // A new delivery quote (pin moved, final cart value) updates the open review window
+      $(document).on("mp:delivery-quote", () => {
+        if ($("#order-review-modal").hasClass("active")) {
+          window.menuPopup.renderOrderReview();
+        }
+      });
     });
   } catch (error) {}
 })(jQuery);

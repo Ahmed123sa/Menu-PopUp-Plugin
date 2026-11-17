@@ -1,0 +1,9 @@
+{
+  "name": "Restaurant Reservation System",
+  "short_name": "Reservations",
+  "description": "Easy table reservations for your favorite restaurants",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3182ce"
+}

@@ -1,0 +1,16 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs and archives
+*.log
+*.zip
+
+# Dependencies
+node_modules/
+
+# Empty placeholder files
+ID
+all_numbered.txt

@@ -1,0 +1,1074 @@
+/* Reservation System Styles */
+
+/* Wizard Container */
+.reservation-wizard-wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  color: #2d3748;
+}
+
+/* CRITICAL: Step Visibility Control - Fix for Stacking Steps */
+.wizard-step {
+  display: none !important; /* FORCE hiding of inactive steps */
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wizard-step.active {
+  display: block !important; /* FORCE showing of active step only */
+}
+
+/* Step Animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Headings */
+.wizard-step h3 {
+  margin-top: 0;
+  margin-bottom: 25px;
+  color: #1a202c;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* CRITICAL: Form Controls Styling */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #4a5568;
+  font-size: 0.95rem;
+}
+
+.form-control {
+  width: 100% !important; /* FORCE full width */
+  padding: 14px 16px !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  font-size: 16px !important;
+  transition: all 0.2s ease !important;
+  background: #f7fafc !important;
+  color: #2d3748 !important;
+  box-sizing: border-box !important; /* Prevent overflow */
+}
+
+.form-control:focus {
+  border-color: #3182ce !important;
+  background: #fff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15) !important;
+}
+
+/* CRITICAL: Time Slots - Fix Button Layout */
+.time-slots-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 15px !important;
+}
+
+.time-slot-btn {
+  padding: 12px !important;
+  background: #fff !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  font-weight: 600 !important;
+  color: #4a5568 !important;
+  transition: all 0.2s !important;
+  width: 100% !important; /* FORCE full width within grid */
+  box-sizing: border-box !important;
+}
+
+.time-slot-btn:hover {
+  border-color: #cbd5e0 !important;
+  transform: translateY(-1px) !important;
+}
+
+.time-slot-btn.selected {
+  background: #3182ce !important;
+  color: #fff !important;
+  border-color: #3182ce !important;
+  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2) !important;
+}
+
+/* CRITICAL: Button Styling - Fix Corrupted Buttons */
+.btn {
+  padding: 14px 28px !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  letter-spacing: 0.01em !important;
+  display: inline-block !important; /* Prevent layout issues */
+}
+
+.btn-primary {
+  background: #3182ce !important;
+  color: #fff !important;
+  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2) !important;
+}
+
+.btn-primary:hover {
+  background: #2b6cb0 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 8px rgba(49, 130, 206, 0.25) !important;
+}
+
+.btn-secondary {
+  background: #edf2f7 !important;
+  color: #4a5568 !important;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0 !important;
+  color: #2d3748 !important;
+}
+
+.btn-success {
+  background: #38a169 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 6px rgba(56, 161, 105, 0.2) !important;
+}
+
+.btn-success:hover {
+  background: #2f855a !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* Wizard Navigation */
+.wizard-actions {
+  display: flex !important;
+  justify-content: space-between !important;
+  margin-top: 40px !important;
+  padding-top: 20px !important;
+  border-top: 1px solid #edf2f7 !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+/* Summary Bars */
+.reservation-summary-bar {
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%) !important;
+  border-radius: 10px !important;
+  padding: 15px !important;
+  margin-bottom: 25px !important;
+  display: flex !important;
+  justify-content: space-around !important;
+  gap: 20px !important;
+  flex-wrap: wrap !important;
+}
+
+.summary-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  flex: 1 !important;
+  min-width: 120px !important;
+}
+
+/* Loading & Error States */
+.loading {
+  text-align: center !important;
+  color: #718096 !important;
+  padding: 20px !important;
+}
+
+.error {
+  color: #e53e3e !important;
+  text-align: center !important;
+  padding: 10px !important;
+  background: #fff5f5 !important;
+  border-radius: 6px !important;
+}
+
+/* Enhanced Table Shapes for Professional Display */
+.table-shape {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  background: #38a169 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  color: white !important;
+  margin-bottom: 8px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Professional Table Shapes Based on Type */
+.shape-round {
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+}
+
+.shape-square {
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, #3182ce 0%, #2c599d 100%) !important;
+  width: 45px !important;
+  height: 45px !important;
+}
+
+.shape-rectangle {
+  border-radius: 6px !important;
+  background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%) !important;
+  width: 55px !important;
+  height: 35px !important;
+}
+
+/* Table Selection UI */
+.table-selection-instructions {
+  background: linear-gradient(135deg, #3182ce 0%, #2c599d 100%) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  margin-bottom: 20px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.customer-floor-plan {
+  min-height: 400px !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  position: relative !important;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  overflow: hidden !important;
+  display: none !important;
+}
+
+.customer-floor-plan.active {
+  display: block !important;
+}
+
+/* Table Cards */
+.restaurant-table {
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 12px !important;
+  background: white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  border: 3px solid #38a169 !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.restaurant-table:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.restaurant-table.selected {
+  border-color: #3182ce !important;
+  background: #ebf8ff !important;
+  box-shadow: 0 0 0 4px rgba(49, 130, 206, 0.2) !important;
+  animation: tableSelect 0.6s ease !important;
+}
+
+@keyframes tableSelect {
+  0% {
+    transform: scale(1) !important;
+  }
+  50% {
+    transform: scale(1.1) !important;
+  }
+  100% {
+    transform: scale(1) !important;
+  }
+}
+
+/* Selected Table Display */
+.selected-table-display {
+  background: #f7fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  margin-top: 20px !important;
+  text-align: center !important;
+}
+
+.table-selection-legend {
+  display: flex !important;
+  gap: 20px !important;
+  justify-content: center !important;
+  margin: 15px 0 !important;
+  flex-wrap: wrap !important;
+}
+
+.legend-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 14px !important;
+  color: #4a5568 !important;
+}
+
+/* LIVE FLOOR PLAN STYLES - Professional Dashboard */
+
+/* Premium Toolbar */
+.map-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.status-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-indicator.free {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+}
+
+.status-indicator.reserved {
+  background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+  color: white;
+}
+
+.status-indicator.occupied {
+  background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%);
+  color: white;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.premium-button {
+  background: linear-gradient(135deg, #3182ce 0%, #2c599d 100%) !important;
+  color: white !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.premium-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 12px rgba(49, 130, 206, 0.3) !important;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.live-dot {
+  width: 12px;
+  height: 12px;
+  background: #48bb78;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+.pulsing {
+  animation: pulse 1.5s infinite !important;
+}
+
+.quick-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d3748;
+  display: block;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #718096;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Floor Plan Styles */
+.live-floor-plan {
+  min-height: 600px;
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.floor-plan-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.floor-plan-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.floor-plan-subtitle {
+  color: #718096;
+  font-size: 14px;
+}
+
+/* Zone Organization */
+.floor-plan-zone {
+  margin-bottom: 40px;
+}
+
+.zone-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid #3182ce;
+}
+
+.zone-header.zone-vip {
+  border-left-color: #9f7aea;
+}
+
+.zone-header.zone-terrace {
+  border-left-color: #48bb78;
+}
+
+.zone-header.zone-bar {
+  border-left-color: #ed8936;
+}
+
+.zone-icon {
+  font-size: 24px;
+}
+
+.zone-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.zone-count {
+  color: #718096;
+  font-size: 14px;
+  margin-left: auto;
+}
+
+.zone-floor-plan {
+  position: relative;
+  min-height: 300px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  overflow: visible;
+}
+
+/* Enhanced Table Nodes for Live Floor Plan */
+.table-node {
+  position: absolute;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 3px solid #48bb78;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Status-specific colors */
+.table-node.status-free {
+  border-color: #48bb78;
+  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+}
+
+.table-node.status-reserved {
+  border-color: #f6ad55;
+  background: linear-gradient(135deg, #fefcbd 0%, #faf089 100%);
+}
+
+.table-node.status-occupied {
+  border-color: #e53e3e;
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+}
+
+/* Zone-specific accents */
+.table-node.zone-vip {
+  border-top: 4px solid #9f7aea;
+}
+
+.table-node.zone-indoor {
+  border-top: 4px solid #3182ce;
+}
+
+.table-node.zone-terrace {
+  border-top: 4px solid #48bb78;
+}
+
+.table-node.zone-bar {
+  border-top: 4px solid #ed8936;
+}
+
+/* Table visual components */
+.table-visual {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.table-status-indicator {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.status-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: currentColor;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.table-status-indicator.free .status-dot {
+  background: #48bb78;
+}
+.table-status-indicator.reserved .status-dot {
+  background: #f6ad55;
+}
+.table-status-indicator.occupied .status-dot {
+  background: #e53e3e;
+}
+
+/* Table information */
+.table-info {
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  max-width: 100px;
+}
+
+.table-name {
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-status {
+  font-size: 10px;
+  font-weight: 600;
+  color: #48bb78;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-node.status-reserved .table-status {
+  color: #f6ad55;
+}
+.table-node.status-occupied .table-status {
+  color: #e53e3e;
+}
+
+.table-capacity {
+  font-size: 9px;
+  color: #718096;
+  font-weight: 500;
+}
+
+/* Reservation info */
+.table-reservation-info {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  font-size: 9px;
+  text-align: left !important;
+}
+
+.customer-name {
+  color: #2d3748;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.reservation-time {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+/* Hover effects */
+.table-node:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.table-node.arrangement-mode {
+  cursor: grab;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.table-node.arrangement-mode:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.table-node.arrangement-mode:hover {
+  transform: translateY(-4px) scale(1.05) !important;
+}
+
+/* Map Instructions */
+.map-instructions {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.map-instructions p {
+  margin-top: 0;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 12px;
+}
+
+.map-instructions ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.map-instructions li {
+  margin-bottom: 6px;
+  color: #4a5568;
+  line-height: 1.4;
+}
+
+/* Loading States */
+.live-map-container .loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #718096;
+  font-size: 16px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .map-toolbar {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .toolbar-actions {
+    justify-content: center;
+  }
+
+  .quick-stats {
+    justify-content: center;
+  }
+
+  .zone-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .live-floor-plan {
+    min-height: 500px;
+  }
+
+  .table-node {
+    min-width: 80px;
+    min-height: 80px;
+  }
+
+  .table-info {
+    font-size: 10px;
+  }
+
+  .table-name {
+    font-size: 10px;
+  }
+
+  .map-instructions ul {
+    padding-left: 15px;
+  }
+}
+
+/* Success States */
+.success-update {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #48bb78;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+  z-index: 1000;
+  font-weight: 600;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .reservation-wizard-wrapper {
+    margin: 20px !important;
+    padding: 20px !important;
+  }
+
+  .wizard-actions {
+    flex-direction: column !important;
+  }
+
+  .wizard-actions .btn {
+    width: 100% !important;
+    margin-bottom: 10px !important;
+  }
+
+  .time-slots-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .restaurant-summary-bar {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  .customer-floor-plan {
+    min-height: 350px !important;
+  }
+
+  .restaurant-table {
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  .table-shape {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* High Contrast Support */
+@media (prefers-contrast: high) {
+  .table-shape {
+    border: 2px solid !important;
+    box-shadow: 0 0 0 2px currentColor !important;
+  }
+
+  .restaurant-table.selected {
+    box-shadow: 0 0 0 4px currentColor !important;
+  }
+}
+
+/* Success States */
+.wizard-success {
+  text-align: center !important;
+  padding: 40px 20px !important;
+  animation: fadeIn 0.5s ease !important;
+}
+
+/* Force Fix - Critical Step Control */
+.wizard-step:not(.active) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+.wizard-step.active {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+}
+
+/* ADDED - MISSING STYLES FOR LIVE FLOOR PLAN */
+
+/* Button icon styling */
+.btn-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  margin-right: 5px !important;
+}
+
+/* Status dot fixes */
+.table-status-indicator .status-dot {
+  display: block !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
+  border: 2px solid white !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.table-status-indicator.free .status-dot {
+  background: #48bb78 !important;
+}
+.table-status-indicator.reserved .status-dot {
+  background: #f6ad55 !important;
+}
+.table-status-indicator.occupied .status-dot {
+  background: #e53e3e !important;
+}
+
+/* Active/highlight state for clicked tables */
+.table-node.active {
+  border-color: #3182ce !important;
+  box-shadow: 0 0 20px rgba(49, 130, 206, 0.3) !important;
+  z-index: 10 !important;
+}
+
+/* FRONTEND CUSTOMER TABLE STYLES - NO CONFLICTS */
+.customer-dining-area {
+  margin-bottom: 25px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.customer-area-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.customer-area-layout {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 15px;
+}
+
+.customer-restaurant-table {
+  border: 2px solid #38a169;
+  border-radius: 8px;
+  background: #f0fff4;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 100px;
+}
+
+.customer-restaurant-table:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+}
+
+.customer-restaurant-table.selected {
+  background: #e6fffa;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.3);
+}
+
+.customer-table-visual {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.customer-table-shape {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+  margin: 0 auto 8px auto;
+}
+
+.customer-table-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.customer-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38a169 !important;
+  display: block !important;
+}
+
+.customer-status-text {
+  color: #38a169;
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.customer-table-info {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.customer-table-seats {
+  font-size: 11px;
+  color: #4a5568;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.customer-table-zone {
+  font-size: 10px;
+  color: #718096;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+  .zone-floor-plan {
+    /* Fix for mobile responsive zone layout */
+  }
+
+  .table-node {
+    min-width: 62px;
+    min-height: 91px;
+  }
+
+  /* HIDE reservation info on mobile to save space */
+  .table-reservation-info {
+    display: none !important;
+  }
+}

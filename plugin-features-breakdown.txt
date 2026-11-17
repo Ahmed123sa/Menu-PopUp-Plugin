@@ -1,0 +1,516 @@
+# MENU POPUP PLUGIN - COMPREHENSIVE FEATURES BREAKDOWN
+# For Modular Development and Refactoring
+# Generated: January 2026
+
+================================================================================
+PLUGIN OVERVIEW
+================================================================================
+
+Plugin Name: Menu Pop-up
+Version: 1.0.0
+WordPress Compatibility: 5.0+
+Architecture: Object-Oriented PHP with AJAX-powered frontend
+
+================================================================================
+CORE ARCHITECTURE ANALYSIS
+================================================================================
+
+## MAIN PLUGIN STRUCTURE (menu-popup.php)
+- **Class**: Menu_Popup_Plugin (Singleton pattern)
+- **Initialization**: Constructor with includes/init_hooks/initialize_classes
+- **Shortcode Registration**: [menu-popup] with parameters
+- **Plugin Lifecycle**: activate/deactivate hooks
+- **Admin Scripts**: Global enqueue with nonce and AJAX URL
+
+### DEPENDENCIES:
+- Menu_Popup_Utils (utility functions)
+- Menu_Popup_Admin_* classes (dashboard, menu items, orders, branches)
+- Menu_Popup_Post_Types (custom post types)
+- Menu_Popup_Frontend (frontend display)
+- Reservation system (optional include)
+
+================================================================================
+FEATURE MODULES BREAKDOWN
+================================================================================
+
+## MODULE 1: CORE MENU DISPLAY SYSTEM
+================================================================================
+
+### 1.1 POST TYPE MANAGEMENT (includes/class-menu-popup-post-types.php)
+**FEATURE**: Custom post types for menu items and branches
+**FUNCTIONS**:
+- register_custom_post_types() - Creates 'menu_item' and 'menu_popup_branch' CPTs
+- register_custom_taxonomies() - Creates 'menu_popup_branch_city' taxonomy
+
+**DATABASE TABLES**: Uses WordPress post tables (no custom tables)
+**DEPENDENCIES**: WordPress core post functions
+**AJAX ENDPOINTS**: None
+**ADMIN INTEGRATION**: Adds to admin menu automatically
+
+### 1.2 UTILITIES (includes/class-menu-popup-utils.php)
+**FEATURE**: Shared utility functions across the plugin
+**FUNCTIONS**:
+- process_video_url() - Converts YouTube/Vimeo/TikTok URLs to embed format
+- normalize_arabic_text() - Arabic text processing for search
+- search_arabic_items() - Advanced Arabic search with scoring
+- calculate_arabic_similarity() - Levenshtein distance for Arabic text
+
+**DEPENDENCIES**: PHP multibyte strings, WordPress WP_Query
+**PERFORMANCE**: Optimized with result limiting and caching
+**MODULARITY**: Can be extracted as standalone Arabic text processing library
+
+================================================================================
+
+## MODULE 2: ADMIN DASHBOARD SYSTEM
+================================================================================
+
+### 2.1 MAIN DASHBOARD (admin/class-menu-popup-admin-dashboard.php)
+**FEATURE**: Central admin interface with statistics and quick actions
+**FUNCTIONS**:
+- dashboard_page_html() - Main dashboard with stats and panels
+- migration_page_html() - Data migration tools
+- count_menu_items/orders/categories() - Statistics helpers
+
+**SUBMODULES**:
+- Statistics cards (menu items, categories, orders)
+- Recent items panel with thumbnails
+- Quick actions panel
+- System status indicators
+- Import/migration tools
+
+**DEPENDENCIES**: WordPress admin API, settings API
+**AJAX**: Real-time settings, accounting settings
+**HOOKS**: admin_menu, admin_init
+
+### 2.2 MENU ITEMS MANAGEMENT (admin/class-menu-popup-admin-menu-items.php)
+**FEATURE**: CRUD operations for menu items with meta boxes
+**FUNCTIONS**:
+- add_menu_item_meta_boxes() - Registers meta boxes
+- save_menu_item_meta() - Saves post meta data
+- register_menu_item_post_type() - Creates menu_item CPT
+- Custom columns and sortable functionality
+- AJAX ordering (update_menu_item_order)
+
+**SUBFEATURES**:
+- Legacy post-meta support
+- Size variations (price/size combinations)
+- Gallery images management
+- Featured items toggle
+- Video URL processing
+- Arabic content fields
+
+**DEPENDENCIES**: WordPress meta boxes, AJAX API
+**VALIDATION**: Nonces, user capabilities, autosave prevention
+
+### 2.3 ORDERS MANAGEMENT (admin/class-menu-popup-admin-orders.php)
+**FEATURE**: Order processing and management system
+**FUNCTIONS**:
+- order_dashboard_page() - Orders list and management
+- process_order_status() - Status updates (pending→preparing→ready→delivered)
+- export_orders_csv() - CSV export functionality
+
+**SUBFEATURES**:
+- Order status workflow
+- Customer information display
+- Order totals calculation
+- Real-time updates
+- Export functionality
+
+**DEPENDENCIES**: WordPress posts (order storage), AJAX
+**INTEGRATION**: WhatsApp ordering, delivery zones
+
+### 2.4 BRANCHES MANAGEMENT (admin/class-menu-popup-admin-branches.php)
+**FEATURE**: Multi-branch restaurant management
+**FUNCTIONS**:
+- Branch CRUD operations
+- Branch-city taxonomy management
+- Branch-specific menu filtering
+
+**SUBFEATURES**:
+- Branch post type with custom fields
+- City/area taxonomy
+- Menu-branch associations
+- Branch selection in frontend
+
+================================================================================
+
+## MODULE 3: FRONTEND DISPLAY SYSTEM
+================================================================================
+
+### 3.1 MAIN FRONTEND (frontend/class-menu-popup-frontend.php)
+**FEATURE**: Public-facing menu display with all interactive features
+**FUNCTIONS**:
+- menu_popup_shortcode() - Main shortcode handler
+- menu_popup_featured_shortcode() - Featured items carousel
+- ajax_filter_menu_items() - AJAX filtering
+- ajax_get_branches_by_city() - Branch selection
+- render_menu() - Main menu rendering
+- render_featured_slideshow() - Swiper carousel
+- render_branch_selection_flow() - Branch picker
+
+**SUBFEATURES**:
+- Shortcode parameter processing
+- Layout switching (grid/list/masonry)
+- Category filtering
+- Search functionality
+- Branch selection flow
+- Featured items slideshow
+- Hero section display
+
+**DEPENDENCIES**: Swiper.js, WordPress AJAX, session handling
+**PERFORMANCE**: Optimized with debouncing and requestAnimationFrame
+
+================================================================================
+
+## MODULE 4: ORDERING & E-COMMERCE SYSTEM
+================================================================================
+
+### 4.1 SHOPPING CART (assets/js/menu-popup-frontend.js - Cart Section)
+**FEATURE**: Client-side shopping cart with persistence
+**FUNCTIONS**:
+- addToCart() - Add items to cart
+- updateCartUI() - Cart display updates
+- showCartFlyout() - Mini cart display
+- showCartModal() - Full cart modal
+- completeOrder() - Order completion flow
+
+**SUBFEATURES**:
+- Local storage persistence
+- Cart quantity controls
+- Price calculations with tax
+- Delivery zone fees
+- Order confirmation flow
+- Customer information collection
+
+**DEPENDENCIES**: LocalStorage API, WordPress AJAX
+**INTEGRATION**: WhatsApp ordering, database storage
+
+### 4.2 WHATSAPP ORDERING
+**FEATURE**: Direct WhatsApp order sending
+**FUNCTIONS**:
+- orderViaWhatsApp() - WhatsApp URL generation
+- sendOrderViaWhatsApp() - Formatted message sending
+
+**SUBFEATURES**:
+- Message formatting with order details
+- Customer information inclusion
+- Delivery zone information
+- Special instructions handling
+
+**DEPENDENCIES**: WhatsApp URL scheme, form validation
+
+### 4.3 DELIVERY ZONES (admin/settings-page.php)
+**FEATURE**: Geographic delivery area management
+**FUNCTIONS**:
+- Delivery zone CRUD in settings
+- Zone-based fee calculation
+- Minimum order enforcement
+
+**SUBFEATURES**:
+- Zone name and fee settings
+- Minimum order amounts
+- Zone enable/disable
+- Frontend zone selection
+
+================================================================================
+
+## MODULE 5: RESERVATION SYSTEM
+================================================================================
+
+### 5.1 RESERVATION LOADER (reservations/loader.php)
+**FEATURE**: Optional reservation module loader
+**FUNCTIONS**:
+- Singleton initialization
+- Component loading and hooks
+
+**SUBMODULES**:
+- Post types, API endpoints, availability engine
+- Admin dashboard, table meta, rules meta
+- Frontend form, debug logger
+
+### 5.2 RESERVATION FRONTEND (reservations/frontend/class-frontend-form.php)
+**FEATURE**: Interactive reservation booking
+**FUNCTIONS**:
+- render_form() - Multi-step reservation form
+- handle_submission() - AJAX form processing
+
+**SUBFEATURES**:
+- Branch selection
+- Party size input
+- Date/time slot picking
+- Table selection with floor plan
+- Customer details collection
+- PWA features
+
+**DEPENDENCIES**: WordPress AJAX, service workers
+**PERFORMANCE**: Optimized with availability engine
+
+### 5.3 AVAILABILITY ENGINE (reservations/includes/class-availability-engine.php)
+**FEATURE**: Advanced table availability calculation with complex rules
+**FUNCTIONS**:
+- get_time_slots($date, $branch_id) - Generate available time slots for branch/date
+- is_date_blocked($date, $branch_id) - Check for blocked dates/rules
+- is_zone_blocked($zone, $date, $branch_id) - Zone-specific blocking
+- get_opening_hours($branch_id, $day) - Dynamic opening hours per branch/day
+- generate_slots_from_range($range) - 30-minute slot generation from time ranges
+- is_table_available($table_id, $date, $time, $duration) - Individual table availability
+- find_best_table($party_size, $date, $time, $branch_id) - Optimal table matching
+
+**SUBFEATURES**:
+- **Multi-range opening hours**: Support for multiple time ranges per day
+- **Rule-based blocking**: Date-specific and zone-specific availability rules
+- **Party size optimization**: Best-fit table selection algorithm
+- **Duration-based booking**: Variable reservation lengths
+- **Branch-specific availability**: Location-based availability filtering
+- **Real-time conflict detection**: Overlap prevention with existing reservations
+
+================================================================================
+
+## MODULE 6: MULTILINGUAL & VOICE FEATURES
+================================================================================
+
+### 6.1 VOICE SEARCH (assets/js/voice-search.js)
+**FEATURE**: Advanced speech-to-text search with intelligent processing
+**FUNCTIONS**:
+- VoiceSearch class with container-scoped instances
+- checkBrowserSupport() - SpeechRecognition API detection
+- setupVoiceRecognition() - Continuous/interim results configuration
+- startListening()/stopListening() - Voice capture controls
+- onRecognitionResult() - Multi-alternative transcript processing
+- determineSearchType() - Category vs item search classification
+- performVoiceSearch() - AJAX search execution
+- showConfirmationDialog() - User transcript confirmation
+- trySmartAutoMatch() - Intelligent auto-matching algorithm
+
+**SUBFEATURES**:
+- **Smart transcript processing**: Filler word removal, normalization
+- **Multi-alternative handling**: Up to 5 recognition alternatives
+- **Category detection**: Automatic category vs item search classification
+- **Fuzzy matching**: Levenshtein distance similarity scoring
+- **Confirmation dialogs**: Optional user transcript verification
+- **Arabic/English support**: Language-specific voice recognition
+- **Fallback mechanisms**: Progressive degradation for poor recognition
+- **Container scoping**: Multiple instances per menu container
+
+### 6.2 SPEECH SYNTHESIS (assets/js/speech-synthesis.js)
+**FEATURE**: Comprehensive text-to-speech with external TTS fallback
+**FUNCTIONS**:
+- SpeechSynthesis class with advanced voice management
+- setupPreferredVoice() - Intelligent voice selection algorithm
+- pronounceItemName() - Dual TTS system (browser + external)
+- tryExternalTTS() - Google Cloud TTS integration
+- fallbackBrowserTTS() - Native browser speech synthesis
+- setupAutoVoice() - Automatic voice selection by language
+- getUserPreference() - User speech preference management
+
+**SUBFEATURES**:
+- **Dual TTS system**: Browser native + Google Cloud TTS
+- **Voice preference management**: User override of admin settings
+- **Language detection**: Automatic Arabic/English voice selection
+- **Pronunciation timing**: Hover delays and mobile touch support
+- **Permission handling**: Browser permission request system
+- **Error recovery**: Graceful fallback between TTS systems
+- **Voice caching**: Audio file caching for external TTS
+- **Speech rate/pitch control**: Language-specific speech parameters
+
+### 6.3 EXTERNAL TTS (assets/js/external-tts.js)
+**FEATURE**: Google Cloud Text-to-Speech API integration
+**FUNCTIONS**:
+- ExternalTTS class for Google Cloud integration
+- isAvailable() - API availability checking
+- generateAudio() - Audio file generation with parameters
+- getSupportedVoices() - Voice listing and filtering
+- setupCache() - Audio file caching system
+
+**SUBFEATURES**:
+- **API authentication**: Google Cloud API key management
+- **Voice selection**: 100+ voices across languages
+- **Audio caching**: Local storage with expiration
+- **Parameter control**: Speaking rate, pitch, volume
+- **Language support**: Arabic, English with regional variants
+- **Error handling**: API failure graceful degradation
+- **Performance optimization**: Cached audio file management
+
+================================================================================
+
+## MODULE 7: STYLING & THEMING SYSTEM
+================================================================================
+
+### 7.1 ADMIN STYLES (assets/css/menu-popup-admin.css)
+**FEATURE**: Admin interface styling
+**COMPONENTS**:
+- Dashboard layouts
+- Form styling
+- Modal designs
+- Responsive breakpoints
+
+### 7.2 FRONTEND STYLES (assets/css/menu-popup-frontend.css)
+**FEATURE**: Public interface styling
+**COMPONENTS**:
+- Menu layouts (grid/list/masonry)
+- Video modals
+- Cart flyouts
+- Animation keyframes
+- RTL support
+- Color theming system
+
+### 7.3 DYNAMIC COLOR SYSTEM
+**FEATURE**: Runtime color customization
+**FUNCTIONS**:
+- CSS custom properties generation
+- Theme color application
+- Real-time color updates
+
+================================================================================
+
+## MODULE 8: SETTINGS & CONFIGURATION
+================================================================================
+
+### 8.1 MAIN SETTINGS (admin/settings-page.php)
+**FEATURE**: Comprehensive plugin configuration
+**SECTIONS**:
+- General settings (videos, animations, layouts)
+- E-commerce settings (ordering, WhatsApp, delivery)
+- Customer fields configuration
+- Business settings (tax, currency, minimum orders)
+- Branch selection settings
+- Voice features configuration
+- Color customization
+- Hero section settings
+
+**SUBFEATURES**:
+- Settings validation and sanitization
+- Conditional field display
+- Settings export/import
+- Default value management
+
+================================================================================
+MODULARIZATION RECOMMENDATIONS
+================================================================================
+
+## PHASE 1: CORE EXTRACTION
+1. **Menu Display Core**: Post types, basic CRUD, shortcode rendering
+2. **Utilities Module**: Text processing, video handling, search functions
+3. **Admin Framework**: Dashboard, menu management, settings system
+
+## PHASE 2: FEATURE MODULES
+1. **Ordering System**: Cart, WhatsApp, delivery zones
+2. **Reservation System**: Complete booking workflow
+3. **Voice Features**: Search, synthesis, TTS integration
+4. **Branch Management**: Multi-location support
+
+## PHASE 3: ADVANCED FEATURES
+1. **Analytics & Reporting**: Order tracking, accounting
+2. **PWA Features**: Service workers, offline support
+3. **Third-party Integrations**: Google TTS, payment gateways
+
+## DEPENDENCY MANAGEMENT
+- **Core Dependencies**: WordPress core, jQuery
+- **Optional Dependencies**: Swiper.js, Google TTS API
+- **Feature Flags**: Conditional loading based on settings
+- **Version Compatibility**: WordPress version checking
+
+================================================================================
+FILE ORGANIZATION FOR MODULAR DEVELOPMENT
+================================================================================
+
+```
+menu-popup/
+├── core/                          # Core functionality
+│   ├── class-menu-popup-plugin.php
+│   ├── class-post-types.php
+│   └── class-utils.php
+├── admin/                         # Admin interfaces
+│   ├── dashboard/
+│   ├── menu-items/
+│   ├── orders/
+│   └── branches/
+├── frontend/                      # Public display
+│   ├── display/
+│   ├── ordering/
+│   └── reservations/
+├── features/                      # Feature modules
+│   ├── voice/
+│   ├── multilingual/
+│   └── analytics/
+├── integrations/                  # Third-party
+│   ├── google-tts/
+│   └── whatsapp/
+├── assets/                        # Static files
+│   ├── css/
+│   ├── js/
+│   └── pwa/
+└── languages/                     # Translations
+```
+
+================================================================================
+IMPLEMENTATION PRIORITIES
+================================================================================
+
+## HIGH PRIORITY (Core Functionality)
+1. Menu display system ✓
+2. Admin management interfaces ✓
+3. Basic ordering system ✓
+4. Settings configuration ✓
+
+## MEDIUM PRIORITY (Enhanced Features)
+1. Reservation system
+2. Voice features
+3. Branch management
+4. Advanced analytics
+
+END OF FEATURES BREAKDOWN
+## LOW PRIORITY (Nice-to-have)
+1. PWA features
+2. External integrations
+3. Advanced theming
+4. Mobile app integration
+
+ADDITIONAL TECHNICAL DETAILS
+
+## ADMIN JAVASCRIPT FUNCTIONALITY (assets/js/menu-popup-admin.js)
+**FEATURE**: Comprehensive admin interface interactions
+**FUNCTIONS**:
+- Category management (CRUD operations)
+- Menu management with drag-drop ordering
+- Branch assignment to menus
+- Settings form handling
+
+**SUBFEATURES**:
+- **AJAX-powered CRUD**: Real-time category/menu/branch operations
+- **Drag-drop reordering**: jQuery UI sortable integration
+- **Form validation**: Client-side validation with server-side fallback
+- **Error handling**: Comprehensive error display and recovery
+
+## FRONTEND JAVASCRIPT ADVANCED FEATURES (assets/js/menu-popup-frontend.js)
+**FEATURE**: Complex frontend interactions and state management
+**MAJOR COMPONENTS**:
+
+### Cart Management System
+- **Persistent storage**: localStorage-based cart persistence
+- **Real-time calculations**: Tax, delivery fees, totals
+- **Multi-modal interface**: Flyout + full modal cart views
+- **Order workflow**: Multi-step confirmation process
+
+### Ordering Integration
+- **WhatsApp integration**: Formatted message generation
+- **Database storage**: WordPress post-based order storage
+- **Customer data handling**: Secure form processing
+- **Delivery zone logic**: Geographic fee calculation
+
+### Advanced UI Interactions
+- **Debounced search**: Performance-optimized search input
+- **Layout switching**: Dynamic grid/list/masonry switching
+- **Video modal system**: Global video player with gallery
+- **Language switching**: Real-time RTL/LTR layout switching
+
+### Performance Optimizations
+- **RequestAnimationFrame**: Smooth animations and updates
+- **Event delegation**: Efficient event handling for dynamic content
+- **Lazy loading**: Progressive content loading
+- **Memory management**: Timeout and event cleanup
+
+END OF COMPREHENSIVE FEATURES BREAKDOWN
+================================================================================
+END OF FEATURES BREAKDOWN
+================================================================================

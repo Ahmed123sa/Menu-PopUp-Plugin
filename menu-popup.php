@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.3.0
+ * Version: 7.4.0
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.3.0');
+define('MENU_POPUP_VERSION', '7.4.0');
 
 /**
  * Main Plugin Class
@@ -63,11 +63,13 @@ class Menu_Popup_Plugin
         require_once plugin_dir_path(__FILE__) . 'includes/payment/class-payment-database.php';
         require_once plugin_dir_path(__FILE__) . 'includes/payment/class-payment-manager.php';
         require_once plugin_dir_path(__FILE__) . 'includes/payment/class-payment-ajax.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/payment/class-payment-methods.php';
         
         // Include admin classes
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-dashboard.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-menu-items.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-orders.php';
+        require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-orders-board.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-branches.php'; // Include branch admin class
         require_once plugin_dir_path(__FILE__) . 'admin/class-payment-settings.php'; // Payment settings
         require_once plugin_dir_path(__FILE__) . 'admin/settings-page.php'; // Moved inclusion here
@@ -88,6 +90,7 @@ class Menu_Popup_Plugin
 
         // Include Order Service (server-side pricing and order creation)
         require_once plugin_dir_path(__FILE__) . 'includes/orders/class-order-service.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/orders/class-order-tracking.php';
     }
 
     /**
@@ -147,6 +150,12 @@ class Menu_Popup_Plugin
 
         // Initialize Order Service
         Menu_Popup_Order_Service::get_instance()->init();
+
+        // Customer status page, transfer receipts, expiry of unpaid transfers
+        Menu_Popup_Order_Tracking::get_instance()->init();
+
+        // Order Dashboard
+        Menu_Popup_Orders_Board::get_instance()->init();
 
         // Enqueue frontend zone checker script
         add_action('wp_enqueue_scripts', array($this, 'enqueue_delivery_zone_scripts'));
@@ -211,6 +220,7 @@ class Menu_Popup_Plugin
     public function deactivate()
     {
         // Clean up if needed
+        wp_clear_scheduled_hook('mp_expire_unpaid_orders');
         flush_rewrite_rules();
     }
 

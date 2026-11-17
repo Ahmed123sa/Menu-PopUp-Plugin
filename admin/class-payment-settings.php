@@ -489,6 +489,10 @@ class PaymentSettings {
             }
         }
         
+        if (class_exists('Menu_Popup_Payment_Methods')) {
+            Menu_Popup_Payment_Methods::save_from_request($_POST);
+        }
+
         wp_send_json_success(['message' => 'Payment settings saved successfully']);
     }
     

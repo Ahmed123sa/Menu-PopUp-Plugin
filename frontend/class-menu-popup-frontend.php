@@ -60,37 +60,9 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             ));
         }
         
-        // Enqueue payment frontend script
-        if (get_option('menu_popup_payment_enabled', '0') === '1') {
-            wp_enqueue_script('menu-popup-payment-frontend', MENU_POPUP_PLUGIN_URL . 'assets/js/payment-frontend.js', array('jquery', 'menu-popup-frontend'), $this->version, true);
-            
-            // Localize payment script with settings
-            wp_localize_script('menu-popup-payment-frontend', 'menuPopupPayment', array(
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('menu_popup_payment_nonce'),
-                'currency' => get_option('menu_popup_payment_currency', 'EGP'),
-                'currency_symbol' => '£',
-                // Labels
-                'labels' => array(
-                    'cod' => get_option('menu_popup_payment_cod_label', 'Cash on Delivery'),
-                    'bank_transfer' => get_option('menu_popup_payment_bank_transfer_label', 'Bank Transfer'),
-                    'fawry' => get_option('menu_popup_payment_fawry_label', 'Pay with Fawry'),
-                ),
-                // Descriptions
-                'descriptions' => array(
-                    'cod' => get_option('menu_popup_payment_cod_description', 'Pay in cash when your order is delivered'),
-                    'bank_transfer' => get_option('menu_popup_payment_bank_transfer_description', 'Transfer via bank account'),
-                    'fawry' => get_option('menu_popup_payment_fawry_description', 'Pay securely online'),
-                ),
-                // Messages
-                'noMethodsAvailable' => __('No payment methods available', 'menu-popup'),
-                'selectMethodMessage' => __('Please select a payment method', 'menu-popup'),
-                'codAgreementRequired' => __('Please agree to pay in cash on delivery', 'menu-popup'),
-                'bankTransferAgreementRequired' => __('Please confirm you have made the transfer', 'menu-popup'),
-                'processingError' => __('Payment processing failed', 'menu-popup'),
-                'redirectNotice' => __('You will be redirected to complete payment', 'menu-popup'),
-            ));
-        }
+        // The checkout builds its payment choices from menuPopupAjax.paymentMethods,
+        // so the older payment-frontend.js is no longer loaded.
+
         
         // Enqueue voice features scripts if enabled
         if (get_option('menu_popup_voice_search_enabled', '0') === '1') {
@@ -199,6 +171,8 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 'lng' => (float) get_option('menu_popup_map_default_lng', '31.2357'),
             ),
             'zonesConfigured'  => !empty($delivery_zones_exist) ? '1' : '0',
+            // Payment choices offered right now (empty = no payment step)
+            'paymentMethods'   => class_exists('Menu_Popup_Payment_Methods') ? Menu_Popup_Payment_Methods::available() : array(),
         ));
     }
 

@@ -79,34 +79,14 @@ class PaymentAJAX {
      * Get payment methods for frontend
      */
     public function ajax_get_payment_methods() {
-        // Verify nonce
-        if (!check_ajax_referer('menu_popup_payment_nonce', 'nonce', false)) {
-            wp_send_json_success([
-                'methods' => [
-                    ['id' => 'cod', 'name' => 'Cash on Delivery', 'description' => 'Pay when you receive', 'is_online' => false],
-                    ['id' => 'fawry', 'name' => 'Pay with Fawry', 'description' => 'Pay online', 'is_online' => true]
-                ]
-            ]);
-            return;
+        // Same list the checkout and the order service use
+        $methods = class_exists('Menu_Popup_Payment_Methods') ? Menu_Popup_Payment_Methods::available() : [];
+        foreach ($methods as &$m) {
+            $m['name']      = $m['label'];
+            $m['is_online'] = $m['kind'] === 'online';
         }
-        
-        // Check if payment system is enabled
-        if (!$this->payment_manager->is_payment_enabled()) {
-            wp_send_json_success([
-                'methods' => []
-            ]);
-        }
-        
-        // Get enabled gateways
-        $methods = $this->payment_manager->get_enabled_gateways_list();
-        
-        // If no methods enabled, provide defaults
-        if (empty($methods)) {
-            $methods = [
-                ['id' => 'cod', 'name' => 'Cash on Delivery', 'description' => 'Pay when you receive', 'is_online' => false]
-            ];
-        }
-        
+        unset($m);
+
         wp_send_json_success([
             'methods' => $methods
         ]);

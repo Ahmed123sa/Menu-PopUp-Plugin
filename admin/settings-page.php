@@ -1557,7 +1557,7 @@ class Menu_Popup_Settings {
 
         add_settings_section(
             'menu_popup_general_settings',
-            __('General Settings', 'menu-popup'),
+            __('Menu Display', 'menu-popup'),
             array($this, 'general_settings_section_callback'),
             'menu_popup_settings_group'
         );
@@ -1631,7 +1631,7 @@ class Menu_Popup_Settings {
             __('Enable Online Ordering', 'menu-popup'),
             array($this, 'ordering_enabled_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_ordering_settings'
         );
 
         add_settings_field(
@@ -1639,7 +1639,7 @@ class Menu_Popup_Settings {
             __('Enable WhatsApp Ordering', 'menu-popup'),
             array($this, 'whatsapp_enabled_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_ordering_settings'
         );
 
         // Shopping cart is automatically enabled when WhatsApp or online ordering is enabled
@@ -1650,7 +1650,7 @@ class Menu_Popup_Settings {
             __('Enable Delivery Options', 'menu-popup'),
             array($this, 'delivery_enabled_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_delivery_settings'
         );
 
         add_settings_field(
@@ -1658,7 +1658,7 @@ class Menu_Popup_Settings {
             __('Google Maps API Key', 'menu-popup'),
             array($this, 'google_maps_api_key_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_delivery_settings'
         );
 
         add_settings_field(
@@ -1666,7 +1666,7 @@ class Menu_Popup_Settings {
             __('Delivery Zones Mode', 'menu-popup'),
             array($this, 'geo_zone_check_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_delivery_settings'
         );
 
         add_settings_field(
@@ -1674,7 +1674,21 @@ class Menu_Popup_Settings {
             __('Default Map Center', 'menu-popup'),
             array($this, 'map_default_center_field_callback'),
             'menu_popup_settings_group',
-            'menu_popup_general_settings'
+            'menu_popup_delivery_settings'
+        );
+
+        add_settings_section(
+            'menu_popup_ordering_settings',
+            __('Ordering Channels', 'menu-popup'),
+            array($this, 'ordering_settings_section_callback'),
+            'menu_popup_settings_group'
+        );
+
+        add_settings_section(
+            'menu_popup_delivery_settings',
+            __('Delivery', 'menu-popup'),
+            array($this, 'delivery_settings_section_callback'),
+            'menu_popup_settings_group'
         );
 
         // Customer Fields Settings Section
@@ -2395,6 +2409,69 @@ class Menu_Popup_Settings {
             <?php _e('Primary text color for menu content. Supports hex (#F9FAFB), rgba(), hsl(), or transparent.', 'menu-popup'); ?>
         </p>
         <?php
+    }
+
+    public function ordering_settings_section_callback() {
+        echo '<p>' . esc_html__( 'Choose how customers can send orders.', 'menu-popup' ) . '</p>';
+    }
+
+    public function delivery_settings_section_callback() {
+        echo '<p>' . esc_html__( 'Turn delivery on or off and choose how delivery zones work. When delivery is off, customers can only pick up.', 'menu-popup' ) . '</p>';
+    }
+
+    /**
+     * Which settings tab each settings section belongs to.
+     */
+    private function settings_section_tabs() {
+        return array(
+            'menu_popup_business_settings'                => 'general',
+            'menu_popup_branch_selection_settings'        => 'general',
+            'menu_popup_general_settings'                 => 'display',
+            'menu_popup_ordering_settings'                => 'ordering',
+            'menu_popup_customer_settings'                => 'ordering',
+            'menu_popup_order_dashboard_realtime_settings' => 'ordering',
+            'menu_popup_delivery_settings'                => 'delivery',
+            'menu_popup_voice_settings'                   => 'voice',
+            'menu_popup_colors_settings'                  => 'appearance',
+            'menu_popup_hero_settings'                    => 'appearance',
+            'menu_popup_cart_settings'                    => 'appearance',
+            'menu_popup_order_modal_settings'             => 'appearance',
+        );
+    }
+
+    /**
+     * Same output as do_settings_sections(), with every section wrapped in a
+     * tab panel. All fields stay inside the form, so saving one tab never
+     * clears the options of another.
+     */
+    private function render_tabbed_sections( $page, $default_tab ) {
+        global $wp_settings_sections, $wp_settings_fields;
+
+        if ( empty( $wp_settings_sections[ $page ] ) ) {
+            return;
+        }
+
+        $tabs = $this->settings_section_tabs();
+
+        foreach ( (array) $wp_settings_sections[ $page ] as $section ) {
+            $tab = isset( $tabs[ $section['id'] ] ) ? $tabs[ $section['id'] ] : $default_tab;
+
+            echo '<div class="mp-settings-panel" data-tab="' . esc_attr( $tab ) . '" id="mp-section-' . esc_attr( $section['id'] ) . '">';
+
+            if ( $section['title'] ) {
+                echo '<h2>' . esc_html( $section['title'] ) . '</h2>';
+            }
+            if ( $section['callback'] ) {
+                call_user_func( $section['callback'], $section );
+            }
+            if ( isset( $wp_settings_fields[ $page ][ $section['id'] ] ) ) {
+                echo '<table class="form-table" role="presentation">';
+                do_settings_fields( $page, $section['id'] );
+                echo '</table>';
+            }
+
+            echo '</div>';
+        }
     }
 
     public function general_settings_section_callback() {
@@ -3390,6 +3467,11 @@ class Menu_Popup_Settings {
             return;
         }
 
+        // media picker for the transfer QR images
+        if (function_exists('wp_enqueue_media')) {
+            wp_enqueue_media();
+        }
+
         if (isset($_GET['settings-updated'])) {
             add_settings_error('menu_popup_messages', 'menu_popup_message', __('Settings Saved', 'menu-popup'), 'updated');
         }
@@ -3405,23 +3487,47 @@ class Menu_Popup_Settings {
                 <?php _e('to display the menu on any page or post.', 'menu-popup'); ?>
             </p>
 
-            <!-- General Settings -->
-            <form action="options.php" method="post">
-                <h2><?php _e('General Settings', 'menu-popup'); ?></h2>
+            <?php
+            $mp_tabs = array(
+                'general'    => __( 'General', 'menu-popup' ),
+                'display'    => __( 'Menu Display', 'menu-popup' ),
+                'ordering'   => __( 'Ordering', 'menu-popup' ),
+                'delivery'   => __( 'Delivery', 'menu-popup' ),
+                'payment'    => __( 'Payment', 'menu-popup' ),
+                'appearance' => __( 'Colors & Look', 'menu-popup' ),
+                'voice'      => __( 'Voice', 'menu-popup' ),
+            );
+            ?>
+            <nav class="nav-tab-wrapper mp-settings-tabs">
+                <?php foreach ( $mp_tabs as $mp_key => $mp_label ) : ?>
+                    <a href="#<?php echo esc_attr( $mp_key ); ?>" class="nav-tab" data-tab="<?php echo esc_attr( $mp_key ); ?>"><?php echo esc_html( $mp_label ); ?></a>
+                <?php endforeach; ?>
+            </nav>
+
+            <style>
+                .mp-settings-js .mp-settings-panel { display: none; }
+                .mp-settings-js .mp-settings-panel.is-active { display: block; }
+                .mp-settings-js .mp-settings-form.is-empty { display: none; }
+                .mp-settings-panel > h2 { margin-top: 28px; padding-bottom: 6px; border-bottom: 1px solid #dcdcde; }
+                .mp-settings-panel:first-child > h2 { margin-top: 18px; }
+                .mp-dep-note { background: #f6f7f7; border-left: 4px solid #72aee6; padding: 8px 12px; margin: 10px 0; }
+            </style>
+
+            <!-- Settings (general, display, ordering, delivery, voice) -->
+            <form action="options.php" method="post" class="mp-settings-form">
                 <?php
                 settings_fields('menu_popup_settings_group');
-                do_settings_sections('menu_popup_settings_group');
-                submit_button(__('Save General Settings', 'menu-popup'));
+                $this->render_tabbed_sections('menu_popup_settings_group', 'general');
+                submit_button(__('Save Changes', 'menu-popup'));
                 ?>
             </form>
 
-            <!-- Color Settings -->
-            <form action="options.php" method="post" style="margin-top: 40px;">
-                <h2><?php _e('Color Customization', 'menu-popup'); ?></h2>
+            <!-- Colors & look -->
+            <form action="options.php" method="post" class="mp-settings-form">
                 <?php
                 settings_fields('menu_popup_colors_group');
-                do_settings_sections('menu_popup_colors_group');
-                submit_button(__('Save Color Settings', 'menu-popup'));
+                $this->render_tabbed_sections('menu_popup_colors_group', 'appearance');
+                submit_button(__('Save Changes', 'menu-popup'));
                 ?>
             </form>
 
@@ -3431,7 +3537,9 @@ class Menu_Popup_Settings {
             <?php
             $payment_nonce = wp_create_nonce('menu_popup_save_payment_settings');
             ?>
-            <form id="payment-settings-form-ajax" method="post" style="margin-top: 40px;">
+            <div class="mp-settings-form">
+            <div class="mp-settings-panel" data-tab="payment">
+            <form id="payment-settings-form-ajax" method="post">
                 <input type="hidden" name="nonce" value="<?php echo esc_attr($payment_nonce); ?>">
                 <h2><?php _e('💳 Payment Methods', 'menu-popup'); ?></h2>
                 <p class="description"><?php _e('Configure payment methods for online orders', 'menu-popup'); ?></p>
@@ -3484,6 +3592,12 @@ class Menu_Popup_Settings {
                     </tr>
                 </table>
                 
+                <?php
+                if (class_exists('Menu_Popup_Payment_Methods')) {
+                    Menu_Popup_Payment_Methods::render_settings();
+                }
+                ?>
+
                 <h3><?php _e('Bank Transfer', 'menu-popup'); ?></h3>
                 <table class="form-table">
                     <tr>
@@ -3560,6 +3674,73 @@ class Menu_Popup_Settings {
                 <?php submit_button(__('Save Payment Settings', 'menu-popup'), 'primary', 'save_payment_settings', true, ['id' => 'save-payment-settings-btn']); ?>
                 <div id="payment-settings-message"></div>
             </form>
+            </div>
+            </div>
+
+            <script>
+            jQuery(function ($) {
+                var $wrap = $('.mp-settings-tabs').closest('.wrap').addClass('mp-settings-js');
+                var valid = $('.mp-settings-tabs .nav-tab').map(function () { return $(this).data('tab'); }).get();
+
+                function show(tab) {
+                    if (valid.indexOf(tab) === -1) { tab = 'general'; }
+                    $('.mp-settings-tabs .nav-tab').removeClass('nav-tab-active')
+                        .filter('[data-tab="' + tab + '"]').addClass('nav-tab-active');
+                    $wrap.find('.mp-settings-panel').removeClass('is-active')
+                        .filter('[data-tab="' + tab + '"]').addClass('is-active');
+                    $wrap.find('.mp-settings-form').each(function () {
+                        $(this).toggleClass('is-empty', $(this).find('.mp-settings-panel.is-active').length === 0);
+                    });
+                    // come back to the same tab after saving
+                    $wrap.find('input[name="_wp_http_referer"]').each(function () {
+                        var v = $(this).val().replace(/([?&])mp_tab=[^&#]*/g, '$1').replace(/[?&]$/, '').replace(/&&+/g, '&');
+                        $(this).val(v + (v.indexOf('?') === -1 ? '?' : '&') + 'mp_tab=' + tab);
+                    });
+                    try { localStorage.setItem('mpSettingsTab', tab); } catch (e) {}
+                }
+
+                $('.mp-settings-tabs').on('click', '.nav-tab', function (e) {
+                    e.preventDefault();
+                    var tab = $(this).data('tab');
+                    if (history.replaceState) { history.replaceState(null, '', '#' + tab); }
+                    show(tab);
+                });
+
+                var start = (location.hash || '').replace('#', '');
+                if (!start) {
+                    var m = location.search.match(/[?&]mp_tab=([a-z]+)/);
+                    if (m) { start = m[1]; }
+                }
+                if (!start) { try { start = localStorage.getItem('mpSettingsTab') || ''; } catch (e) {} }
+                show(start || 'general');
+
+                // Settings that only matter when another one is on.
+                // Hidden rows are still saved, so nothing is lost.
+                function row(name) { return $wrap.find('[name="' + name + '"]').first().closest('tr'); }
+
+                function applyDeps() {
+                    var deliveryOn = $wrap.find('[name="menu_popup_delivery_enabled"]').is(':checked');
+                    var mapMode = $wrap.find('[name="menu_popup_delivery_mode"]:checked').val() === 'map';
+                    row('menu_popup_delivery_mode').toggle(deliveryOn);
+                    row('menu_popup_google_maps_api_key').toggle(deliveryOn && mapMode);
+                    row('menu_popup_map_default_lat').toggle(deliveryOn && mapMode);
+                    $('#mp-delivery-off-note').toggle(!deliveryOn);
+
+                    var ttsOn = $wrap.find('[name="menu_popup_external_tts_enabled"]').is(':checked');
+                    row('menu_popup_google_tts_api_key').toggle(ttsOn);
+                    row('menu_popup_tts_cache_enabled').toggle(ttsOn);
+
+                    var autoRefresh = $wrap.find('[name="menu_popup_order_dashboard_realtime_enabled"]').is(':checked');
+                    row('menu_popup_order_dashboard_refresh_interval').toggle(autoRefresh);
+                }
+
+                $('#mp-section-menu_popup_delivery_settings > table').before(
+                    $('<p class="mp-dep-note" id="mp-delivery-off-note"></p>').text('<?php echo esc_js( __( 'Delivery is off: customers can only pick up. Turn it on to set up delivery zones.', 'menu-popup' ) ); ?>')
+                );
+                $wrap.on('change', 'input', applyDeps);
+                applyDeps();
+            });
+            </script>
             <script>
             jQuery(document).ready(function($) {
                 $('#payment-settings-form-ajax').on('submit', function(e) {

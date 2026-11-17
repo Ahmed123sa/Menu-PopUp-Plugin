@@ -2033,10 +2033,8 @@
         setTimeout(() => {
           this.renderCartItemsWithAnimation();
           
-          // Load payment methods if enabled
-          if (window.menuPopupPayment) {
-            this.loadPaymentMethodsInModal();
-          }
+          // Payment choices offered right now
+          this.loadPaymentMethodsInModal();
         }, 150);
 
         cartModal.addClass("active");
@@ -2488,10 +2486,8 @@
         this.renderOrderConfirmation();
         confirmModal.addClass("active");
         
-        // Load payment methods in order confirmation modal
-        if (window.menuPopupPayment) {
-          this.loadPaymentMethodsInModal();
-        }
+        // Payment choices offered right now
+        this.loadPaymentMethodsInModal();
       }
 
       renderOrderConfirmation() {
@@ -3387,17 +3383,60 @@
       
       // Load payment methods in cart modal
       loadPaymentMethodsInModal() {
-        const paymentSection = $('#payment-methods-section');
-        
-        // Payment methods are now hardcoded in HTML - always show the section when payment is enabled
-        if (paymentSection.length > 0) {
-          paymentSection.show();
-          
-          // If dynamic loading is available, try to load from server
-          if (window.menuPopupPayment && window.menuPopupPaymentFrontend) {
-            window.menuPopupPaymentFrontend.loadPaymentMethods();
+        this.renderPaymentOptions();
+      }
+
+      // The payment methods come from the server (menuPopupAjax.paymentMethods).
+      // No methods = the payment system is off and the section is hidden.
+      paymentMethodList() {
+        return Array.isArray(menuPopupAjax.paymentMethods) ? menuPopupAjax.paymentMethods : [];
+      }
+
+      paymentKind(id) {
+        const m = this.paymentMethodList().find((x) => x.id === id);
+        return m ? m.kind : "";
+      }
+
+      renderPaymentOptions() {
+        const list = this.paymentMethodList();
+        const targets = [
+          { box: $("#payment-methods-list-confirmation"), name: "confirmation_payment_method", prefix: "confirmation_payment_" },
+          { box: $("#payment-methods-list"), name: "payment_method", prefix: "payment_" },
+        ];
+
+        targets.forEach((t) => {
+          if (!t.box.length) {
+            return;
           }
-        }
+          const section = t.box.closest(".payment-methods-section");
+          if (!list.length) {
+            t.box.empty();
+            section.hide();
+            return;
+          }
+
+          const current = t.box.find("input:checked").val();
+          t.box.empty();
+          list.forEach((m) => {
+            const id = t.prefix + m.id;
+            const opt = $('<div class="payment-method-option"></div>');
+            const input = $('<input type="radio">').attr({ name: t.name, id: id, value: m.id });
+            const label = $("<label></label>").attr("for", id);
+            label.append($("<strong></strong>").text((m.icon ? m.icon + " " : "") + m.label));
+            if (m.description) {
+              label.append($('<span class="payment-desc"></span>').text(m.description));
+            }
+            opt.append(input).append(label);
+            t.box.append(opt);
+          });
+
+          let pick = current ? t.box.find('input[value="' + current + '"]') : $();
+          if (!pick.length) {
+            pick = t.box.find("input").first();
+          }
+          pick.prop("checked", true);
+          section.show();
+        });
       }
 
       // Layout switching functionality
@@ -3664,7 +3703,19 @@
         };
         Object.assign(formData, this.deliveryExtras(formData));
 
-        // Process order based on payment method
+        // Online gateways pay first; cash and transfers are saved right away
+        // (a transfer then continues on the order status page).
+        if (selectedPaymentMethod && this.paymentKind(selectedPaymentMethod) !== "online" && this.paymentMethodList().length) {
+          if (menuPopupAjax.orderingEnabled === "1") {
+            this.saveOrderToDatabase(formData);
+          } else {
+            alert(
+              "Ordering is currently unavailable. Please contact the restaurant directly to place your order."
+            );
+          }
+          return;
+        }
+
         if (!selectedPaymentMethod) {
           // No payment method selected - use default behavior
           if (menuPopupAjax.orderingEnabled === "1") {
@@ -3902,6 +3953,7 @@
               "#mp-order-success li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #eee}" +
               "#mp-order-success .mp-os-row{display:flex;justify-content:space-between;padding:3px 0;text-align:start}" +
               "#mp-order-success .mp-os-total{font-weight:700;font-size:17px;border-top:2px solid #222;margin-top:6px;padding-top:8px}" +
+              "#mp-order-success .mp-os-track{display:block;margin-top:14px;color:#2563eb;font-weight:600}" +
               "#mp-order-success button{margin-top:16px;padding:10px 28px;border:0;border-radius:8px;background:#222;color:#fff;font-size:15px;cursor:pointer}" +
               "</style>"
           );
@@ -3939,6 +3991,14 @@
           box.append(row("Estimated delivery", "about " + result.delivery_eta + " min"));
         }
 
+        if (result.status_url) {
+          box.append(
+            $('<a class="mp-os-track" target="_blank" rel="noopener"></a>')
+              .attr("href", result.status_url)
+              .text("Track your order")
+          );
+        }
+
         const close = $('<button type="button"></button>').text("Close");
         const dismiss = () => overlay.remove();
         close.on("click", dismiss);
@@ -3959,8 +4019,17 @@
         this.placeOrder(formData, "online")
           .done((response) => {
             if (response && response.success) {
+              const order = response.data;
+              if (order.payment_kind === "manual" && order.status_url) {
+                // Transfer: the status page shows where to send the money and takes the receipt
+                this.orderRequestId = null;
+                this.clearCart();
+                this.setOrderButtonsBusy(true, "Opening payment page...");
+                window.location.href = order.status_url;
+                return;
+              }
               this.setOrderButtonsBusy(false);
-              this.showOrderSuccess(response.data);
+              this.showOrderSuccess(order);
             } else {
               this.orderRequestId = null;
               this.setOrderButtonsBusy(false);

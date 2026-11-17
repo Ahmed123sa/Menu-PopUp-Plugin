@@ -220,16 +220,24 @@ class Menu_Popup_Order_Service {
         $total = round($subtotal + $tax + $delivery['fee'], 2);
 
         // --- payment method -------------------------------------------------
+        // Only methods offered right now are accepted. With the payment system
+        // off there is no payment step and the order is taken as before.
         $payment_method = '';
-        if ($source === 'online' && !empty($in['payment_method'])) {
-            $payment_method = sanitize_key((string) $in['payment_method']);
-            if (class_exists('PaymentManager')) {
-                $enabled = PaymentManager::get_instance()->get_enabled_gateways();
-                if (!isset($enabled[$payment_method])) {
-                    return new WP_Error('invalid_payment', __('The selected payment method is not available.', 'menu-popup'));
+        $payment_kind   = '';
+        if ($source === 'online' && class_exists('Menu_Popup_Payment_Methods')) {
+            $offered = Menu_Popup_Payment_Methods::available();
+            if (!empty($offered)) {
+                $wanted = !empty($in['payment_method']) ? sanitize_key((string) $in['payment_method']) : '';
+                $found  = $wanted !== '' ? Menu_Popup_Payment_Methods::find_available($wanted) : null;
+                if (!$found) {
+                    return new WP_Error('invalid_payment', __('Please choose one of the available payment methods.', 'menu-popup'));
                 }
+                $payment_method = $found['id'];
+                $payment_kind   = $found['kind'];
             }
         }
+        $is_transfer    = $payment_kind === 'manual';
+        $initial_status = $is_transfer ? 'awaiting_payment' : 'pending';
 
         // --- store -----------------------------------------------------------
         $order_id = wp_insert_post(array(
@@ -261,8 +269,10 @@ class Menu_Popup_Order_Service {
         update_post_meta($order_id, '_order_subtotal', $subtotal);
         update_post_meta($order_id, '_order_tax', $tax);
         update_post_meta($order_id, '_order_total', $total);
-        update_post_meta($order_id, '_order_status', 'pending');
+        update_post_meta($order_id, '_order_status', $initial_status);
         update_post_meta($order_id, '_currency_symbol', $currency);
+        $access_key = wp_generate_password(24, false, false);
+        update_post_meta($order_id, '_order_access_key', $access_key);
 
         update_post_meta($order_id, '_order_type', $order_type);
         update_post_meta($order_id, '_order_source', $source);
@@ -287,15 +297,27 @@ class Menu_Popup_Order_Service {
             }
         }
 
+        $deadline_minutes = 0;
         if ($payment_method !== '') {
             update_post_meta($order_id, '_payment_method', $payment_method);
-            update_post_meta($order_id, '_payment_status', 'pending');
+            if ($is_transfer) {
+                $deadline_minutes = Menu_Popup_Payment_Methods::deadline_minutes();
+                update_post_meta($order_id, '_payment_status', 'awaiting_proof');
+                update_post_meta($order_id, '_payment_deadline', time() + $deadline_minutes * MINUTE_IN_SECONDS);
+            } else {
+                update_post_meta($order_id, '_payment_status', 'pending');
+            }
         }
+
+        $status_url = add_query_arg(array('mp_order' => (int) $order_id, 'k' => $access_key), home_url('/'));
 
         $result = array(
             'order_id'        => (int) $order_id,
             'order_number'    => $order_number,
-            'status'          => 'pending',
+            'status'          => $initial_status,
+            'status_url'      => $status_url,
+            'payment_kind'    => $payment_kind,
+            'payment_deadline_minutes' => $deadline_minutes,
             'order_type'      => $order_type,
             'source'          => $source,
             'branch_id'       => $branch_id,

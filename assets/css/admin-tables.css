@@ -1,0 +1,44 @@
+.mp-tables .mp-tables-toolbar{display:flex;align-items:center;gap:10px;margin:14px 0}
+.mp-tables .mp-tables-updated{color:#787c82;font-size:12px}
+
+.mp-open-grid,.mp-qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+
+.mp-t-card,.mp-qr-card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:14px;box-shadow:0 1px 1px rgba(0,0,0,.04)}
+.mp-t-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.mp-t-head h3,.mp-qr-card h3{margin:0;font-size:18px}
+.mp-t-branch{color:#787c82;font-size:12px}
+
+.mp-t-call{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff4d6;border:1px solid #f0c36d;border-radius:6px;padding:7px 10px;margin-bottom:8px;font-weight:600}
+.mp-t-call-bill{background:#e6f1ff;border-color:#8cb8f0}
+
+.mp-t-orders{list-style:none;margin:0 0 10px;padding:0}
+.mp-t-order{border-top:1px solid #f0f0f1;padding:8px 0}
+.mp-t-order:first-child{border-top:0}
+.mp-t-order.is-paid{opacity:.7}
+.mp-t-order-top{display:flex;align-items:center;gap:8px}
+.mp-t-pick-gap{display:inline-block;width:16px}
+.mp-t-total{margin-inline-start:auto;font-weight:600}
+.mp-t-status{background:#f0f0f1;border-radius:10px;padding:1px 8px;font-size:11px}
+.mp-t-items{color:#50575e;font-size:12px;margin:3px 0 0 24px}
+.mp-t-notes{color:#8a6100;font-size:12px;margin:2px 0 0 24px}
+.mp-t-pay{font-size:12px;margin:3px 0 0 24px}
+.mp-t-pay.ok{color:#007017}
+.mp-t-pay.wait{color:#996800}
+
+.mp-t-foot{border-top:2px solid #f0f0f1;padding-top:10px}
+.mp-t-sum{display:flex;justify-content:space-between;font-size:15px;margin-bottom:4px}
+.mp-t-sum-paid{font-size:12px;color:#50575e}
+.mp-t-actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.mp-t-note{color:#787c82;font-size:12px;margin:6px 0}
+.mp-t-close{margin-top:4px}
+.mp-t-empty{color:#787c82}
+
+.mp-free-list{margin-top:18px}
+.mp-free-list h4{margin:0 0 8px}
+.mp-t-chip{display:inline-block;background:#fff;border:1px solid #dcdcde;border-radius:14px;padding:3px 12px;margin:0 6px 6px 0;font-size:13px}
+
+.mp-qr-card{text-align:center}
+.mp-qr-img{display:inline-block;border:1px solid #eee;border-radius:6px;overflow:hidden;margin-bottom:8px;line-height:0}
+.mp-qr-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+
+body.rtl .mp-t-items,body.rtl .mp-t-notes,body.rtl .mp-t-pay{margin:3px 24px 0 0}

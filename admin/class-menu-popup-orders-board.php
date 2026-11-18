@@ -99,6 +99,8 @@ class Menu_Popup_Orders_Board {
                 'customer'      => __( 'Customer', 'menu-popup' ),
                 'delivery'      => __( 'Delivery', 'menu-popup' ),
                 'pickup'        => __( 'Pickup', 'menu-popup' ),
+                'dineIn'        => __( 'Dine-in', 'menu-popup' ),
+                'table'         => __( 'Table', 'menu-popup' ),
                 'payment'       => __( 'Payment', 'menu-popup' ),
                 'history'       => __( 'History', 'menu-popup' ),
                 'notes'         => __( 'Notes', 'menu-popup' ),
@@ -162,9 +164,10 @@ class Menu_Popup_Orders_Board {
                 </select>
                 <?php endif; ?>
                 <select id="mp-f-type">
-                    <option value=""><?php esc_html_e( 'Delivery and pickup', 'menu-popup' ); ?></option>
+                    <option value=""><?php esc_html_e( 'All order types', 'menu-popup' ); ?></option>
                     <option value="delivery"><?php esc_html_e( 'Delivery only', 'menu-popup' ); ?></option>
                     <option value="pickup"><?php esc_html_e( 'Pickup only', 'menu-popup' ); ?></option>
+                    <option value="dine_in"><?php esc_html_e( 'Dine-in (table) only', 'menu-popup' ); ?></option>
                 </select>
                 <span class="mp-history-only">
                     <input type="date" id="mp-f-from" aria-label="<?php esc_attr_e( 'From', 'menu-popup' ); ?>">
@@ -300,6 +303,7 @@ class Menu_Popup_Orders_Board {
             'duplicates'     => array_values( (array) ( $m( '_payment_ref_duplicates' ) ?: array() ) ),
             'needs_review'   => $m( '_needs_review' ) === '1',
             'zone'           => (string) $m( '_delivery_zone_name' ),
+            'table'          => (string) $m( '_table_name' ),
         );
 
         if ( ! $full ) {
@@ -360,7 +364,7 @@ class Menu_Popup_Orders_Board {
         if ( ! empty( $f['branch'] ) ) {
             $mq[] = array( 'key' => '_branch_id', 'value' => (int) $f['branch'] );
         }
-        if ( ! empty( $f['type'] ) && in_array( $f['type'], array( 'delivery', 'pickup' ), true ) ) {
+        if ( ! empty( $f['type'] ) && in_array( $f['type'], array( 'delivery', 'pickup', 'dine_in' ), true ) ) {
             $mq[] = array( 'key' => '_order_type', 'value' => $f['type'] );
         }
 

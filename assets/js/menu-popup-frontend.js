@@ -2135,9 +2135,13 @@
         if (menuPopupAjax.customerNameRequired === "1") {
           fields += '<div class="form-field">';
           fields +=
-            '<label for="confirmation_customer_name">Full Name <span class="required">*</span></label>';
+            menuPopupAjax.table
+              ? '<label for="confirmation_customer_name">Name (optional)</label>'
+              : '<label for="confirmation_customer_name">Full Name <span class="required">*</span></label>';
           fields +=
-            '<input type="text" id="confirmation_customer_name" name="confirmation_customer_name" required>';
+            '<input type="text" id="confirmation_customer_name" name="confirmation_customer_name"' +
+            (menuPopupAjax.table ? "" : " required") +
+            ">";
           fields += "</div>";
         }
 
@@ -2145,9 +2149,13 @@
         if (menuPopupAjax.customerPhoneRequired === "1") {
           fields += '<div class="form-field">';
           fields +=
-            '<label for="confirmation_customer_phone">Phone Number <span class="required">*</span></label>';
+            menuPopupAjax.table
+              ? '<label for="confirmation_customer_phone">Phone Number (needed only if you pay by transfer)</label>'
+              : '<label for="confirmation_customer_phone">Phone Number <span class="required">*</span></label>';
           fields +=
-            '<input type="tel" id="confirmation_customer_phone" name="confirmation_customer_phone" required>';
+            '<input type="tel" id="confirmation_customer_phone" name="confirmation_customer_phone"' +
+            (menuPopupAjax.table ? "" : " required") +
+            ">";
           fields += "</div>";
         }
 
@@ -2232,8 +2240,8 @@
         let isValid = true;
         let errorMessage = "";
 
-        // Validate required name field
-        if (menuPopupAjax.customerNameRequired === "1") {
+        // Validate required name field (optional when ordering from a table)
+        if (menuPopupAjax.customerNameRequired === "1" && !menuPopupAjax.table) {
           const nameField = $("#confirmation_customer_name");
           if (!nameField.val().trim()) {
             isValid = false;
@@ -2244,8 +2252,13 @@
           }
         }
 
-        // Validate required phone field
-        if (menuPopupAjax.customerPhoneRequired === "1") {
+        // Validate required phone field (at a table: only for transfers, so we can reach the customer)
+        let phoneNeeded = menuPopupAjax.customerPhoneRequired === "1";
+        if (menuPopupAjax.table) {
+          const chosen = $('input[name="confirmation_payment_method"]:checked').val();
+          phoneNeeded = !!chosen && this.paymentKind(chosen) === "manual";
+        }
+        if (phoneNeeded) {
           const phoneField = $("#confirmation_customer_phone");
           if (!phoneField.val().trim()) {
             isValid = false;
@@ -2328,7 +2341,13 @@
           
           // Build order type section based on delivery enabled setting
           let orderTypeSection = '';
-          if (menuPopupAjax.deliveryEnabled === "1") {
+          if (menuPopupAjax.table) {
+            // Ordering from a table: no pickup/delivery choice
+            const tableLabel = $("<div></div>").text(menuPopupAjax.table.name).html();
+            orderTypeSection =
+              '<input type="radio" name="confirmation_order_type" value="dine_in" checked style="display:none">' +
+              '<div class="mp-table-banner">🍽️ Table ' + tableLabel + "</div>";
+          } else if (menuPopupAjax.deliveryEnabled === "1") {
             orderTypeSection = `
               <!-- Order Type Selection -->
               <div class="order-type-selection" id="order-type-selection">
@@ -2810,8 +2829,14 @@
         ).val();
         this.selected_order_type = selectedType; // Store for later use
 
-        // Determine order method
+        if (window.mpTablePending) {
+          alert("Please wait a moment, your table is loading.");
+          return;
+        }
+
+        // Determine order method (a table order always goes straight to the restaurant)
         if (
+          !menuPopupAjax.table &&
           menuPopupAjax.whatsappEnabled === "1" &&
           menuPopupAjax.restaurantWhatsapp
         ) {
@@ -2934,8 +2959,10 @@
           fields += "</div>";
           fields += "</div>";
         } else {
-          // Hidden field for pickup if delivery not enabled
-          fields += '<input type="hidden" name="order_type" value="pickup">';
+          // Hidden field for pickup if delivery not enabled (dine-in at a table)
+          fields += menuPopupAjax.table
+            ? '<input type="radio" name="order_type" value="dine_in" checked style="display:none">'
+            : '<input type="hidden" name="order_type" value="pickup">';
         }
 
         if (menuPopupAjax.customerNameRequired === "1") {
@@ -3057,12 +3084,14 @@
         let isValid = true;
         if (
           menuPopupAjax.customerNameRequired === "1" &&
+          !menuPopupAjax.table &&
           !formData.customer_name.trim()
         ) {
           isValid = false;
         }
         if (
           menuPopupAjax.customerPhoneRequired === "1" &&
+          !menuPopupAjax.table &&
           !formData.customer_phone.trim()
         ) {
           isValid = false;
@@ -3807,6 +3836,10 @@
               source: source || "online",
               order_type: formData.order_type || "pickup",
               branch_id: menuPopupAjax.activeBranchId || 0,
+              table_id:
+                formData.order_type === "dine_in" && menuPopupAjax.table ? menuPopupAjax.table.id : 0,
+              table_sig:
+                formData.order_type === "dine_in" && menuPopupAjax.table ? menuPopupAjax.table.sig : "",
               customer_name: formData.customer_name || "",
               customer_phone: formData.customer_phone || "",
               customer_email: formData.customer_email || "",
@@ -3979,6 +4012,9 @@
             .append($("<span></span>").text(label))
             .append($("<span></span>").text(value));
 
+        if (result.table_name) {
+          box.append(row("Table", result.table_name));
+        }
         box.append(row("Subtotal", money(result.subtotal)));
         if (Number(result.tax) > 0) {
           box.append(row("Tax", money(result.tax)));

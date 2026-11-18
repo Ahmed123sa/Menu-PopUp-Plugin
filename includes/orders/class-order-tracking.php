@@ -594,6 +594,9 @@ class Menu_Popup_Order_Tracking {
                 <div class="mp-row"><span><?php esc_html_e( 'Delivery', 'menu-popup' ); ?></span><span><?php echo esc_html( $money( $fee ) ); ?></span></div>
             <?php endif; ?>
             <div class="mp-row mp-total"><span><?php esc_html_e( 'Total', 'menu-popup' ); ?></span><span><?php echo esc_html( $money( $total ) ); ?></span></div>
+            <?php if ( $type === 'dine_in' ) : ?>
+                <div class="mp-row mp-muted"><span><?php esc_html_e( 'Table', 'menu-popup' ); ?></span><span><?php echo esc_html( (string) get_post_meta( $id, '_table_name', true ) ); ?></span></div>
+            <?php endif; ?>
             <div class="mp-row mp-muted"><span><?php esc_html_e( 'Payment', 'menu-popup' ); ?></span><span><?php echo esc_html( Menu_Popup_Payment_Methods::label( $st['payment_method'] ) ); ?></span></div>
         </div>
         <?php

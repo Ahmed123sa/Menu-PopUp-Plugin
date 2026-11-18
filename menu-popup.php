@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.4.0
+ * Version: 7.4.1
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.4.0');
+define('MENU_POPUP_VERSION', '7.4.1');
 
 /**
  * Main Plugin Class
@@ -91,6 +91,10 @@ class Menu_Popup_Plugin
         // Include Order Service (server-side pricing and order creation)
         require_once plugin_dir_path(__FILE__) . 'includes/orders/class-order-service.php';
         require_once plugin_dir_path(__FILE__) . 'includes/orders/class-order-tracking.php';
+
+        // Ordering from the table (QR codes)
+        require_once plugin_dir_path(__FILE__) . 'includes/tables/class-table-ordering.php';
+        require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-tables-admin.php';
     }
 
     /**
@@ -156,6 +160,10 @@ class Menu_Popup_Plugin
 
         // Order Dashboard
         Menu_Popup_Orders_Board::get_instance()->init();
+
+        // Ordering from the table (does nothing until it is switched on in the settings)
+        Menu_Popup_Table_Ordering::get_instance()->init();
+        Menu_Popup_Tables_Admin::get_instance()->init();
 
         // Enqueue frontend zone checker script
         add_action('wp_enqueue_scripts', array($this, 'enqueue_delivery_zone_scripts'));

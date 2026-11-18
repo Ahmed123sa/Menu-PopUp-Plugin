@@ -1,0 +1,10 @@
+.mp-table-bar{position:fixed;top:0;left:0;right:0;z-index:99990;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#1f2937;color:#fff;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+body.admin-bar .mp-table-bar{top:32px}
+@media (max-width:782px){body.admin-bar .mp-table-bar{top:46px}}
+body.mp-at-table{padding-top:46px}
+.mp-table-name{font-weight:700}
+.mp-table-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mp-table-btn{border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:16px;padding:5px 12px;font-size:13px;cursor:pointer}
+.mp-table-btn:disabled{opacity:.55;cursor:default}
+.mp-table-msg{flex-basis:100%;background:#16a34a;color:#fff;border-radius:6px;padding:5px 10px;font-size:13px}
+.mp-table-banner{margin:10px 0;padding:10px 12px;border-radius:8px;background:#f3f4f6;font-weight:600;text-align:center}

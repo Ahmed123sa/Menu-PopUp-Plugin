@@ -997,6 +997,44 @@ class Menu_Popup_Settings {
             )
         );
 
+        // Ordering from the table (QR codes)
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_table_ordering_enabled',
+            array(
+                'type' => 'boolean',
+                'default' => '0',
+                'sanitize_callback' => array($this, 'sanitize_boolean')
+            )
+        );
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_table_payment_mode',
+            array(
+                'type' => 'string',
+                'default' => 'inside',
+                'sanitize_callback' => array($this, 'sanitize_table_payment_mode')
+            )
+        );
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_table_call_cooldown',
+            array(
+                'type' => 'integer',
+                'default' => 120,
+                'sanitize_callback' => array($this, 'sanitize_table_call_cooldown')
+            )
+        );
+        register_setting(
+            'menu_popup_settings_group',
+            'menu_popup_table_menu_page',
+            array(
+                'type' => 'integer',
+                'default' => 0,
+                'sanitize_callback' => 'absint'
+            )
+        );
+
         register_setting(
             'menu_popup_settings_group',
             'menu_popup_map_default_lat',
@@ -1682,6 +1720,42 @@ class Menu_Popup_Settings {
             __('Ordering Channels', 'menu-popup'),
             array($this, 'ordering_settings_section_callback'),
             'menu_popup_settings_group'
+        );
+
+        add_settings_section(
+            'menu_popup_table_settings',
+            __('Order from the Table (QR)', 'menu-popup'),
+            array($this, 'table_settings_section_callback'),
+            'menu_popup_settings_group'
+        );
+
+        add_settings_field(
+            'menu_popup_table_ordering_enabled',
+            __('Enable Table Ordering', 'menu-popup'),
+            array($this, 'table_ordering_enabled_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_table_settings'
+        );
+        add_settings_field(
+            'menu_popup_table_payment_mode',
+            __('Who handles the bill', 'menu-popup'),
+            array($this, 'table_payment_mode_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_table_settings'
+        );
+        add_settings_field(
+            'menu_popup_table_call_cooldown',
+            __('Waiter call interval', 'menu-popup'),
+            array($this, 'table_call_cooldown_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_table_settings'
+        );
+        add_settings_field(
+            'menu_popup_table_menu_page',
+            __('Menu page for QR codes', 'menu-popup'),
+            array($this, 'table_menu_page_field_callback'),
+            'menu_popup_settings_group',
+            'menu_popup_table_settings'
         );
 
         add_settings_section(
@@ -2428,6 +2502,7 @@ class Menu_Popup_Settings {
             'menu_popup_branch_selection_settings'        => 'general',
             'menu_popup_general_settings'                 => 'display',
             'menu_popup_ordering_settings'                => 'ordering',
+            'menu_popup_table_settings'                   => 'ordering',
             'menu_popup_customer_settings'                => 'ordering',
             'menu_popup_order_dashboard_realtime_settings' => 'ordering',
             'menu_popup_delivery_settings'                => 'delivery',
@@ -2661,6 +2736,72 @@ class Menu_Popup_Settings {
 
     public function sanitize_delivery_mode($value) {
         return $value === 'map' ? 'map' : 'manual';
+    }
+
+    // ---- Order from the table (QR codes) -------------------------------------
+
+    public function table_settings_section_callback() {
+        echo '<p>' . esc_html__('Customers scan the QR code on their table, order from the menu and pay at the table or by transfer. Each table gets its own printable code. Needs "Enable Online Ordering" above to be on.', 'menu-popup') . '</p>';
+        if (get_option('menu_popup_table_ordering_enabled', '0') === '1') {
+            echo '<p><a class="button" href="' . esc_url(admin_url('admin.php?page=menu-popup-tables')) . '">' . esc_html__('Open Tables & QR codes', 'menu-popup') . '</a></p>';
+        }
+    }
+
+    public function table_ordering_enabled_field_callback() {
+        $value = get_option('menu_popup_table_ordering_enabled', '0');
+        ?>
+        <label for="menu_popup_table_ordering_enabled">
+            <input type="checkbox" id="menu_popup_table_ordering_enabled" name="menu_popup_table_ordering_enabled" value="1" <?php checked($value, '1'); ?> />
+            <?php _e('Let customers order from the table with a QR code', 'menu-popup'); ?>
+        </label>
+        <p class="description"><?php _e('When off, the Tables page is hidden and printed QR codes simply open the normal menu. Your tables are the ones under "Restaurant Tables" (shared with reservations).', 'menu-popup'); ?></p>
+        <?php
+    }
+
+    public function table_payment_mode_field_callback() {
+        $value = get_option('menu_popup_table_payment_mode', 'inside') === 'outside' ? 'outside' : 'inside';
+        ?>
+        <label style="display:block;margin-bottom:6px;">
+            <input type="radio" name="menu_popup_table_payment_mode" value="inside" <?php checked($value, 'inside'); ?> />
+            <strong><?php _e('This plugin', 'menu-popup'); ?></strong>
+            &mdash; <?php _e('The customer chooses cash or card; the waiter settles the bill from the Tables page.', 'menu-popup'); ?>
+        </label>
+        <label style="display:block;">
+            <input type="radio" name="menu_popup_table_payment_mode" value="outside" <?php checked($value, 'outside'); ?> />
+            <strong><?php _e('My own POS', 'menu-popup'); ?></strong>
+            &mdash; <?php _e('The plugin only takes the order ("Pay at the table"). The cashier enters it in the POS. Wallets and InstaPay stay available if switched on.', 'menu-popup'); ?>
+        </label>
+        <?php
+    }
+
+    public function sanitize_table_payment_mode($value) {
+        return $value === 'outside' ? 'outside' : 'inside';
+    }
+
+    public function table_call_cooldown_field_callback() {
+        $value = (int) get_option('menu_popup_table_call_cooldown', 120);
+        ?>
+        <input type="number" min="30" max="1800" step="10" name="menu_popup_table_call_cooldown" value="<?php echo esc_attr($value ? $value : 120); ?>" class="small-text" />
+        <?php _e('seconds', 'menu-popup'); ?>
+        <p class="description"><?php _e('How long a table must wait before pressing "Call waiter" or "Ask for the bill" again.', 'menu-popup'); ?></p>
+        <?php
+    }
+
+    public function sanitize_table_call_cooldown($value) {
+        $value = (int) $value;
+        return max(30, min(1800, $value ? $value : 120));
+    }
+
+    public function table_menu_page_field_callback() {
+        wp_dropdown_pages(array(
+            'name' => 'menu_popup_table_menu_page',
+            'selected' => (int) get_option('menu_popup_table_menu_page', 0),
+            'show_option_none' => __('Find the menu page automatically', 'menu-popup'),
+            'option_none_value' => '0',
+        ));
+        ?>
+        <p class="description"><?php _e('The page with the [menu-popup] shortcode that the QR code opens.', 'menu-popup'); ?></p>
+        <?php
     }
 
     public function map_default_center_field_callback() {
@@ -3725,6 +3866,11 @@ class Menu_Popup_Settings {
                     row('menu_popup_google_maps_api_key').toggle(deliveryOn && mapMode);
                     row('menu_popup_map_default_lat').toggle(deliveryOn && mapMode);
                     $('#mp-delivery-off-note').toggle(!deliveryOn);
+
+                    var tableOn = $wrap.find('[name="menu_popup_table_ordering_enabled"]').is(':checked');
+                    row('menu_popup_table_payment_mode').toggle(tableOn);
+                    row('menu_popup_table_call_cooldown').toggle(tableOn);
+                    row('menu_popup_table_menu_page').toggle(tableOn);
 
                     var ttsOn = $wrap.find('[name="menu_popup_external_tts_enabled"]').is(':checked');
                     row('menu_popup_google_tts_api_key').toggle(ttsOn);

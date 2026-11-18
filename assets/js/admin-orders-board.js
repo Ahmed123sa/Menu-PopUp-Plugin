@@ -22,6 +22,12 @@
     // ------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------
+    function typeIcon(o) { return o.type === 'delivery' ? '🚚' : (o.type === 'dine_in' ? '🍽️' : '🛍️'); }
+    function typeText(o) {
+        if (o.type === 'delivery') { return T.delivery; }
+        if (o.type === 'dine_in') { return T.dineIn + (o.table ? ' · ' + T.table + ' ' + o.table : ''); }
+        return T.pickup;
+    }
     function money(v, cur) { return (cur || C.currency || '') + Number(v || 0).toFixed(2); }
     function el(tag, cls, text) {
         var $e = $('<' + tag + '></' + tag + '>');
@@ -113,7 +119,7 @@
         var $c = el('div', 'mp-card mp-st-' + o.status).attr('data-id', o.id);
         var $h = el('div', 'mp-card-head');
         $h.append(el('strong', 'mp-num', '#' + o.number));
-        $h.append(el('span', 'mp-type mp-type-' + o.type, o.type === 'delivery' ? '🚚 ' + T.delivery : '🛍️ ' + T.pickup));
+        $h.append(el('span', 'mp-type mp-type-' + o.type, typeIcon(o) + ' ' + typeText(o)));
         $h.append(el('span', 'mp-ago', ago(o.time)));
         $c.append($h);
 
@@ -191,7 +197,7 @@
         $tr.append(el('td').append(el('strong', '', '#' + o.number)));
         $tr.append(el('td', '', o.date));
         $tr.append(el('td').append(el('div', '', o.customer || '—')).append(el('small', '', o.phone)));
-        $tr.append(el('td', '', (o.type === 'delivery' ? T.delivery : T.pickup) + (o.branch ? ' · ' + o.branch : '')));
+        $tr.append(el('td', '', typeText(o) + (o.branch ? ' · ' + o.branch : '')));
         $tr.append(el('td', '', money(o.total, o.currency)));
         $tr.append(el('td', '', o.payment_label + (o.payment_status ? ' · ' + paymentLabel(o.payment_status) : '')));
         $tr.append(el('td').append(el('span', 'mp-badge mp-st-' + o.status, statusLabel(o.status))));
@@ -282,7 +288,7 @@
         var $top = el('div', 'mp-d-top');
         $top.append(el('h2', '', '#' + o.number));
         $top.append(el('span', 'mp-badge mp-st-' + o.status, statusLabel(o.status)));
-        $top.append(el('div', 'mp-meta', o.date + ' · ' + (o.type === 'delivery' ? T.delivery : T.pickup) + (o.branch ? ' · ' + o.branch : '') + (o.source ? ' · ' + o.source : '')));
+        $top.append(el('div', 'mp-meta', o.date + ' · ' + typeText(o) + (o.branch ? ' · ' + o.branch : '') + (o.source ? ' · ' + o.source : '')));
         $b.append($top);
 
         // payment block first when it needs a decision

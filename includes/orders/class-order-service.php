@@ -101,9 +101,32 @@ class Menu_Popup_Order_Service {
             return new WP_Error('ordering_disabled', __('WhatsApp ordering is currently unavailable.', 'menu-popup'));
         }
 
-        $order_type = (isset($in['order_type']) && $in['order_type'] === 'delivery') ? 'delivery' : 'pickup';
+        $order_type = 'pickup';
+        if (isset($in['order_type'])) {
+            if ($in['order_type'] === 'delivery') {
+                $order_type = 'delivery';
+            } elseif ($in['order_type'] === 'dine_in') {
+                $order_type = 'dine_in';
+            }
+        }
         if ($order_type === 'delivery' && get_option('menu_popup_delivery_enabled', '0') !== '1') {
             return new WP_Error('delivery_disabled', __('Delivery is not available.', 'menu-popup'));
+        }
+
+        // Ordering from a table: the signed table code decides the table and the branch
+        $table = null;
+        if ($order_type === 'dine_in') {
+            if ($source !== 'online' || !class_exists('Menu_Popup_Table_Ordering')) {
+                return new WP_Error('table_disabled', __('Ordering from the table is not available.', 'menu-popup'));
+            }
+            $table = Menu_Popup_Table_Ordering::resolve(
+                isset($in['table_id']) ? absint($in['table_id']) : 0,
+                isset($in['table_sig']) ? sanitize_text_field((string) $in['table_sig']) : ''
+            );
+            if (is_wp_error($table)) {
+                return $table;
+            }
+            $in['branch_id'] = $table['branch_id'];
         }
 
         // --- branch -------------------------------------------------------
@@ -121,7 +144,7 @@ class Menu_Popup_Order_Service {
         list($subtotal, $tax) = $this->compute_totals($lines);
 
         // --- customer -----------------------------------------------------
-        $customer = $this->read_customer($in);
+        $customer = $this->read_customer($in, $order_type === 'dine_in');
         if (is_wp_error($customer)) {
             return $customer;
         }
@@ -224,7 +247,20 @@ class Menu_Popup_Order_Service {
         // off there is no payment step and the order is taken as before.
         $payment_method = '';
         $payment_kind   = '';
-        if ($source === 'online' && class_exists('Menu_Popup_Payment_Methods')) {
+        if ($order_type === 'dine_in') {
+            // At a table the choices are the table's own (cash / card machine, or pay at the table, plus transfers)
+            $wanted = !empty($in['payment_method']) ? sanitize_key((string) $in['payment_method']) : '';
+            $offered = Menu_Popup_Table_Ordering::payment_methods();
+            $found   = $wanted !== '' ? Menu_Popup_Table_Ordering::find_method($wanted) : (!empty($offered) ? $offered[0] : null);
+            if (!$found) {
+                return new WP_Error('invalid_payment', __('Please choose one of the available payment methods.', 'menu-popup'));
+            }
+            $payment_method = $found['id'];
+            $payment_kind   = $found['kind'];
+            if ($payment_kind === 'manual' && $customer['phone'] === '') {
+                return new WP_Error('missing_phone', __('Please enter your phone number so we can reach you about your transfer.', 'menu-popup'));
+            }
+        } elseif ($source === 'online' && class_exists('Menu_Popup_Payment_Methods')) {
             $offered = Menu_Popup_Payment_Methods::available();
             if (!empty($offered)) {
                 $wanted = !empty($in['payment_method']) ? sanitize_key((string) $in['payment_method']) : '';
@@ -276,6 +312,11 @@ class Menu_Popup_Order_Service {
 
         update_post_meta($order_id, '_order_type', $order_type);
         update_post_meta($order_id, '_order_source', $source);
+        update_post_meta($order_id, '_created_ts', time());
+        if ($table !== null) {
+            update_post_meta($order_id, '_table_id', $table['id']);
+            update_post_meta($order_id, '_table_name', $table['name']);
+        }
         update_post_meta($order_id, '_branch_id', $branch_id);
         update_post_meta($order_id, '_delivery_fee', $delivery['fee']);
 
@@ -319,6 +360,7 @@ class Menu_Popup_Order_Service {
             'payment_kind'    => $payment_kind,
             'payment_deadline_minutes' => $deadline_minutes,
             'order_type'      => $order_type,
+            'table_name'      => $table !== null ? $table['name'] : '',
             'source'          => $source,
             'branch_id'       => $branch_id,
             'items'           => $lines,
@@ -508,15 +550,15 @@ class Menu_Popup_Order_Service {
     /**
      * @return array|WP_Error
      */
-    private function read_customer(array $in) {
+    private function read_customer(array $in, $relaxed = false) {
         $name  = isset($in['customer_name']) ? $this->clip(sanitize_text_field((string) $in['customer_name']), 100) : '';
         $phone = isset($in['customer_phone']) ? sanitize_text_field((string) $in['customer_phone']) : '';
         $email = isset($in['customer_email']) ? sanitize_email((string) $in['customer_email']) : '';
 
-        if (get_option('menu_popup_customer_name_required', '1') === '1' && $name === '') {
+        if (!$relaxed && get_option('menu_popup_customer_name_required', '1') === '1' && $name === '') {
             return new WP_Error('missing_name', __('Please enter your name.', 'menu-popup'));
         }
-        if (get_option('menu_popup_customer_phone_required', '1') === '1' && $phone === '') {
+        if (!$relaxed && get_option('menu_popup_customer_phone_required', '1') === '1' && $phone === '') {
             return new WP_Error('missing_phone', __('Please enter your phone number.', 'menu-popup'));
         }
         // Digits (including Arabic-Indic digits), plus, dash, spaces and brackets.

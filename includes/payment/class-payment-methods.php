@@ -225,6 +225,9 @@ class Menu_Popup_Payment_Methods {
         if ( $id === 'card_pos' ) {
             return __( 'Card (machine)', 'menu-popup' );
         }
+        if ( $id === 'table' ) {
+            return __( 'Pay at the table', 'menu-popup' );
+        }
         $c = self::transfer_config( $id );
         return $c ? $c['label'] : $id;
     }

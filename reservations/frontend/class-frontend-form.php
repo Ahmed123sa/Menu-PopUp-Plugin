@@ -40,7 +40,7 @@ class Menu_Popup_Reservations_Frontend_Form
             'menu-popup-reservation-wizard',
             MENU_POPUP_RESERVATIONS_URL . 'assets/js/reservation-wizard.js',
             array('jquery'),  // ONLY jQuery - no conflicting dependencies!
-            '1.0.0',
+            defined('MENU_POPUP_VERSION') ? MENU_POPUP_VERSION : '1.0.0',
             true
         );
 
@@ -216,42 +216,37 @@ class Menu_Popup_Reservations_Frontend_Form
         Reservation_Debug_Logger::log_backend('RESERVATION: Nonce verification passed');
         // ... (rest of the code remains similar, can be optimized later)
 
-        // Re-implementing basic save for completeness of this file update
-        $name = sanitize_text_field($_POST['customer_name']);
-        $phone = sanitize_text_field($_POST['customer_phone']);
-        $date = sanitize_text_field($_POST['reservation_date']);
-        $time = sanitize_text_field($_POST['time']); // Note: JS sends 'time', previous form sent 'reservation_time'
-        if (empty($time))
-            $time = sanitize_text_field($_POST['reservation_time']); // Fallback
-
-        $party_size = intval($_POST['party_size']);
-        $branch_id = intval($_POST['branch_id']);
-        $table_id = intval($_POST['table_id']);
-
-        if (empty($name) || empty($phone) || empty($date) || empty($time) || empty($table_id)) {
-            wp_send_json_error(__('All fields are required, including table selection.', 'menu-popup'));
+        $name = sanitize_text_field(wp_unslash($_POST['customer_name'] ?? ''));
+        $phone = sanitize_text_field(wp_unslash($_POST['customer_phone'] ?? ''));
+        $date = sanitize_text_field(wp_unslash($_POST['reservation_date'] ?? ''));
+        $time = sanitize_text_field(wp_unslash($_POST['time'] ?? '')); // JS sends 'time'
+        if (empty($time)) {
+            $time = sanitize_text_field(wp_unslash($_POST['reservation_time'] ?? '')); // Fallback
         }
 
-        $reservation_id = wp_insert_post(array(
-            'post_type' => 'menu_reservation',
-            'post_status' => 'publish',
-            'post_title' => sprintf(__('Reservation for %s', 'menu-popup'), $name),
+        // One place decides whether the table is free and saves the reservation
+        $engine = new Menu_Popup_Availability_Engine();
+        $result = $engine->book(array(
+            'name' => $name,
+            'phone' => $phone,
+            'date' => $date,
+            'time' => $time,
+            'party_size' => intval($_POST['party_size'] ?? 0),
+            'branch_id' => intval($_POST['branch_id'] ?? 0),
+            'table_id' => intval($_POST['table_id'] ?? 0),
+            'special_requests' => wp_unslash($_POST['special_requests'] ?? ''),
         ));
 
-        if ($reservation_id) {
-            update_post_meta($reservation_id, '_customer_name', $name);
-            update_post_meta($reservation_id, '_customer_phone', $phone);
-            update_post_meta($reservation_id, '_reservation_date', $date);
-            update_post_meta($reservation_id, '_reservation_time', $time);
-            update_post_meta($reservation_id, '_party_size', $party_size);
-            update_post_meta($reservation_id, '_branch_id', $branch_id);
-            update_post_meta($reservation_id, '_assigned_table', $table_id);
-            update_post_meta($reservation_id, '_status', 'pending');
-            update_post_meta($reservation_id, '_special_requests', sanitize_textarea_field($_POST['special_requests']));
-
-            wp_send_json_success(__('Reservation submitted successfully! We look forward to seeing you.', 'menu-popup'));
-        } else {
-            wp_send_json_error(__('Failed to create reservation.', 'menu-popup'));
+        if (is_wp_error($result)) {
+            $data = $result->get_error_data();
+            Reservation_Debug_Logger::log_backend('RESERVATION: Refused', array('code' => $result->get_error_code()));
+            wp_send_json_error(array(
+                'message' => $result->get_error_message(),
+                'code' => $result->get_error_code(),
+                'step' => (is_array($data) && isset($data['step'])) ? (int) $data['step'] : 0,
+            ));
         }
+
+        wp_send_json_success(__('Reservation submitted successfully! We look forward to seeing you.', 'menu-popup'));
     }
 }

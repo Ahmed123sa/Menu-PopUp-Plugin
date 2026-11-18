@@ -271,9 +271,39 @@ class ReservationWizard {
         if (response.success) {
           this.showSuccess(response.data);
         } else {
-          alert(response.data || "An error occurred");
+          const err = response.data;
+          const message =
+            err && typeof err === "object" ? err.message : err;
+          alert(message || "An error occurred");
           this.submitButton.textContent = "Confirm Reservation";
           this.submitButton.disabled = false;
+
+          // The table or time was taken meanwhile: send the customer back to choose again
+          const step = err && typeof err === "object" ? Number(err.step) : 0;
+          if (step === 2 || step === 3) {
+            this.data.table_id = null;
+            this.data.table_name = null;
+            const nextBtn = document.getElementById("table-selection-next");
+            if (nextBtn) {
+              nextBtn.disabled = true;
+            }
+            const display = document.getElementById("selected-table-display");
+            const label = display && display.querySelector(".table-number");
+            if (label) {
+              label.textContent = "No table selected";
+            }
+            const details = display && display.querySelector(".table-details");
+            if (details) {
+              details.textContent = "";
+            }
+            this.currentStep = step;
+            this.updateUI();
+            if (step === 3) {
+              this.loadAvailableTables();
+            } else {
+              this.loadTimeSlots();
+            }
+          }
         }
       },
       error: () => {

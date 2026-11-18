@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.4.1
+ * Version: 7.4.2
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.4.1');
+define('MENU_POPUP_VERSION', '7.4.2');
 
 /**
  * Main Plugin Class

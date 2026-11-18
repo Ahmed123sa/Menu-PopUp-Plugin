@@ -792,8 +792,29 @@ class Menu_Popup_Reservations_Admin_Dashboard
     public function handle_status_update()
     {
         check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Not allowed');
+            return;
+        }
         $reservation_id = intval($_POST['reservation_id']);
         $new_status = sanitize_text_field($_POST['status']);
+
+        if (get_post_type($reservation_id) !== 'menu_reservation'
+            || !in_array($new_status, array('pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'), true)) {
+            wp_send_json_error('Unknown reservation or status');
+            return;
+        }
+
+        // Bringing a cancelled / finished reservation back must not collide with a newer booking
+        $old_status = (string) get_post_meta($reservation_id, '_status', true);
+        $active = Menu_Popup_Availability_Engine::ACTIVE_STATUSES;
+        if (in_array($new_status, $active, true) && !in_array($old_status, $active, true)) {
+            $engine = new Menu_Popup_Availability_Engine();
+            if (!$engine->can_reactivate($reservation_id)) {
+                wp_send_json_error('This table is already booked at that time by another reservation, so this one can not be restored.');
+                return;
+            }
+        }
 
         // update_post_meta returns meta_id on success or false on failure
         $result = update_post_meta($reservation_id, '_status', $new_status);

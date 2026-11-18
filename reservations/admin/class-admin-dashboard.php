@@ -17,6 +17,7 @@ class Menu_Popup_Reservations_Admin_Dashboard
         add_action('wp_ajax_menu_popup_bulk_delete_reservations', array($this, 'handle_bulk_delete_reservations'));
         add_action('wp_ajax_menu_popup_get_table_reservations', array($this, 'get_table_reservations'));
         add_action('wp_ajax_menu_popup_get_live_status', array($this, 'get_live_status'));
+        add_action('wp_ajax_menu_popup_live_snapshot', array($this, 'ajax_live_snapshot'));
     }
 
     public function add_admin_menu()
@@ -59,6 +60,40 @@ class Menu_Popup_Reservations_Admin_Dashboard
                 true
             );
 
+            if (isset($_GET['tab']) && $_GET['tab'] === 'map') {
+                wp_enqueue_style('menu-popup-live-floor', MENU_POPUP_RESERVATIONS_URL . 'assets/css/live-floor.css', array(), MENU_POPUP_VERSION);
+                wp_enqueue_script('menu-popup-live-floor', MENU_POPUP_RESERVATIONS_URL . 'assets/js/live-floor.js', array('jquery'), MENU_POPUP_VERSION, true);
+                wp_localize_script('menu-popup-live-floor', 'mpLiveFloor', array(
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('menu_popup_reservation_admin_nonce'),
+                    'interval' => 20,
+                    'snapshot' => $this->build_live_snapshot(),
+                    'tablesUrl' => (class_exists('Menu_Popup_Table_Ordering') && Menu_Popup_Table_Ordering::enabled()) ? admin_url('admin.php?page=menu-popup-tables') : '',
+                    'i18n' => array(
+                        'available' => __('Available', 'menu-popup'), 'reserved' => __('Reserved', 'menu-popup'),
+                        'occupied' => __('Occupied', 'menu-popup'), 'waiter' => __('Waiter called', 'menu-popup'),
+                        'bill' => __('Bill requested', 'menu-popup'), 'overstay' => __('Over time', 'menu-popup'),
+                        'unconfirmed' => __('Not confirmed', 'menu-popup'), 'guests' => __('guests', 'menu-popup'),
+                        'since' => __('from', 'menu-popup'), 'until' => __('until', 'menu-popup'),
+                        'openOrders' => __('open order(s)', 'menu-popup'), 'due' => __('due', 'menu-popup'),
+                        'freeAllDay' => __('Free for the rest of the day', 'menu-popup'), 'next' => __('Next', 'menu-popup'),
+                        'late' => __('late', 'menu-popup'), 'min' => __('min', 'menu-popup'), 'seats' => __('seats', 'menu-popup'),
+                        'none' => __('No tables match this filter.', 'menu-popup'), 'close' => __('Close', 'menu-popup'),
+                        'openTables' => __('Open Tables & QR', 'menu-popup'), 'today' => __("Today's reservations", 'menu-popup'),
+                        'noRes' => __('No reservations today.', 'menu-popup'), 'confirm' => __('Confirm', 'menu-popup'),
+                        'seat' => __('Seat guests', 'menu-popup'), 'noShow' => __('No-show', 'menu-popup'),
+                        'cancel' => __('Cancel', 'menu-popup'), 'complete' => __('Complete', 'menu-popup'),
+                        'updated' => __('Updated', 'menu-popup'), 'sure' => __('Are you sure?', 'menu-popup'),
+                        'failed' => __('Could not update. Please try again.', 'menu-popup'),
+                        'st' => array(
+                            'pending' => __('Pending', 'menu-popup'), 'confirmed' => __('Confirmed', 'menu-popup'),
+                            'seated' => __('Seated', 'menu-popup'), 'completed' => __('Completed', 'menu-popup'),
+                            'cancelled' => __('Cancelled', 'menu-popup'), 'no_show' => __('No-show', 'menu-popup'),
+                        ),
+                    ),
+                ));
+            }
+
             wp_localize_script('menu-popup-reservation-admin', 'menuPopupReservation', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('menu_popup_reservation_admin_nonce')
@@ -94,449 +129,219 @@ class Menu_Popup_Reservations_Admin_Dashboard
         <?php
     }
 
-    private function render_map_view()
+    /**
+     * One place that decides what every table is doing right now.
+     * Used for the first paint and for the auto refresh, so they can never disagree.
+     */
+    public function build_live_snapshot()
     {
-        // Get all tables for floor plan
-        $args = array(
+        $today = wp_date('Y-m-d');
+        $now_min = (int) wp_date('G') * 60 + (int) wp_date('i');
+        $soon = (int) apply_filters('menu_popup_live_reserved_window', 120);
+        $active = Menu_Popup_Availability_Engine::ACTIVE_STATUSES;
+
+        $to_min = function ($time) {
+            return preg_match('/(\d{1,2}):(\d{2})/', (string) $time, $m) ? ((int) $m[1] * 60 + (int) $m[2]) : -1;
+        };
+        $fmt = function ($min) {
+            $min = ((int) $min) % 1440;
+            return sprintf('%02d:%02d', intdiv($min, 60), $min % 60);
+        };
+
+        $tables = get_posts(array(
             'post_type' => 'restaurant_table',
             'posts_per_page' => -1,
-            'orderby' => 'menu_order',
-            'order' => 'ASC'
-        );
-
-        $tables = get_posts($args);
-
-        // Get current live status for today
-        $today = date('Y-m-d');
-
-        // Get all existing reservations for today
-        $reservations_today = new WP_Query(array(
-            'post_type' => 'menu_reservation',
-            'meta_query' => array(
-                array('key' => '_reservation_date', 'value' => $today, 'compare' => '='),
-                array('key' => '_status', 'value' => array('confirmed', 'pending'), 'compare' => 'IN')
-            ),
-            'posts_per_page' => -1
+            'orderby' => array('menu_order' => 'ASC', 'title' => 'ASC'),
+            'no_found_rows' => true,
         ));
 
-        // Track table reservations and status
-        $table_status = array();
-        $table_reservations = array();
-
-        // Initialize all tables as free
-        foreach ($tables as $table) {
-            $table_status[$table->ID] = 'free';
-            $table_reservations[$table->ID] = array();
-        }
-
-        // Parse today's reservations
-        if ($reservations_today->have_posts()) {
-            while ($reservations_today->have_posts()) {
-                $reservations_today->the_post();
-                $reservation_id = get_the_ID();
-                $assigned_table = get_post_meta($reservation_id, '_assigned_table', true);
-                $reservation_time = get_post_meta($reservation_id, '_reservation_time', true);
-                $party_size = intval(get_post_meta($reservation_id, '_party_size', true));
-                $status = get_post_meta($reservation_id, '_status', true);
-                $customer_name = get_post_meta($reservation_id, '_customer_name', true);
-
-                if ($assigned_table && isset($table_reservations[$assigned_table])) {
-                    $table_reservations[$assigned_table][] = array(
-                        'time' => $reservation_time,
-                        'party_size' => $party_size,
-                        'status' => $status,
-                        'customer' => $customer_name,
-                        'id' => $reservation_id
-                    );
-                }
+        // Today's reservations, grouped by table
+        $by_table = array();
+        $bookings = 0;
+        $guests = 0;
+        $q = new WP_Query(array(
+            'post_type' => 'menu_reservation',
+            'posts_per_page' => 500,
+            'no_found_rows' => true,
+            'meta_query' => array(array('key' => '_reservation_date', 'value' => $today)),
+        ));
+        foreach ($q->posts as $p) {
+            $tid = (int) get_post_meta($p->ID, '_assigned_table', true);
+            $status = (string) get_post_meta($p->ID, '_status', true);
+            $start = $to_min(get_post_meta($p->ID, '_reservation_time', true));
+            if (!$tid || $start < 0) {
+                continue;
             }
-            wp_reset_postdata();
+            $dur = (int) get_post_meta($p->ID, '_duration', true);
+            $dur = $dur > 0 ? $dur : Menu_Popup_Availability_Engine::default_duration();
+            $party = (int) get_post_meta($p->ID, '_party_size', true);
+            $row = array(
+                'id' => $p->ID,
+                'status' => $status,
+                'time' => $fmt($start),
+                'end' => $fmt($start + $dur),
+                'start_min' => $start,
+                'end_min' => $start + $dur,
+                'party' => $party,
+                'customer' => (string) get_post_meta($p->ID, '_customer_name', true),
+                'phone' => (string) get_post_meta($p->ID, '_customer_phone', true),
+                'notes' => (string) get_post_meta($p->ID, '_special_requests', true),
+            );
+            $by_table[$tid][] = $row;
+            if (in_array($status, $active, true) || $status === 'completed') {
+                $bookings++;
+                $guests += $party;
+            }
         }
 
-        // Determine current table status based on time
-        $current_time = date('H:i');
-        $current_hour = (int)substr($current_time, 0, 2);
-        $current_minute = (int)substr($current_time, 3, 2);
-        $current_minutes = $current_hour * 60 + $current_minute;
+        // Dine-in orders and waiter calls from the QR ordering feature
+        $dine = array();
+        if (class_exists('Menu_Popup_Table_Ordering') && Menu_Popup_Table_Ordering::enabled()) {
+            $open = Menu_Popup_Table_Ordering::open_tables();
+            $currency = $open['currency'];
+            foreach ($open['tables'] as $row) {
+                $dine[(int) $row['id']] = $row;
+            }
+        } else {
+            $currency = (string) get_option('menu_popup_currency_symbol', '$');
+        }
 
-        foreach ($tables as $table) {
-            $table_id = $table->ID;
+        $out = array();
+        $sum = array('free' => 0, 'reserved' => 0, 'occupied' => 0, 'attention' => 0);
 
-            if (!empty($table_reservations[$table_id])) {
-                foreach ($table_reservations[$table_id] as $reservation) {
-                    if ($reservation['status'] === 'confirmed') {
-                        $res_time = $reservation['time'];
-                        $res_hour = (int)substr($res_time, 0, 2);
-                        $res_minute = (int)substr($res_time, 3, 2);
-                        $res_minutes = $res_hour * 60 + $res_minute;
+        foreach ($tables as $tbl) {
+            $tid = $tbl->ID;
+            $list = isset($by_table[$tid]) ? $by_table[$tid] : array();
+            usort($list, function ($x, $y) {
+                return $x['start_min'] - $y['start_min'];
+            });
 
-                        // Assume 2-hour reservation duration
-                        $reservation_end = $res_minutes + 120;
-
-                        if ($current_minutes >= $res_minutes && $current_minutes <= $reservation_end) {
-                            $table_status[$table_id] = 'occupied';
-                            break;
-                        } elseif ($current_minutes < $res_minutes) {
-                            $table_status[$table_id] = 'reserved';
-                        }
+            $seated = null;
+            $next = null;
+            foreach ($list as $r) {
+                if (!in_array($r['status'], $active, true)) {
+                    continue;
+                }
+                if ($r['status'] === 'seated') {
+                    if (!$seated) {
+                        $seated = $r;
                     }
+                } elseif ($r['end_min'] > $now_min && !$next) {
+                    $next = $r;
                 }
             }
+
+            $dr = isset($dine[$tid]) ? $dine[$tid] : null;
+            $n_orders = $dr ? count($dr['orders']) : 0;
+            $flags = array();
+
+            if ($seated || $n_orders) {
+                $status = 'occupied';
+            } elseif ($next && ($next['start_min'] - $now_min) <= $soon) {
+                $status = 'reserved';
+            } else {
+                $status = 'free';
+            }
+
+            if ($next) {
+                $next['late'] = max(0, $now_min - $next['start_min']);
+                if ($next['late'] >= 15) {
+                    $flags[] = 'late';
+                }
+                if ($next['status'] === 'pending' && ($next['start_min'] - $now_min) <= 60) {
+                    $flags[] = 'unconfirmed';
+                }
+            }
+            if ($seated && $now_min > $seated['end_min']) {
+                $flags[] = 'overstay';
+            }
+            if ($dr && $dr['waiter']) {
+                $flags[] = 'waiter';
+            }
+            if ($dr && $dr['bill']) {
+                $flags[] = 'bill';
+            }
+
+            $sum[$status]++;
+            if ($flags) {
+                $sum['attention']++;
+            }
+
+            $branch_id = get_post_meta($tid, '_branch_id', true);
+            $out[] = array(
+                'id' => $tid,
+                'name' => $tbl->post_title,
+                'zone' => (string) (get_post_meta($tid, '_zone', true) ?: 'indoor'),
+                'capacity' => (int) (get_post_meta($tid, '_max_pax', true) ?: 4),
+                'branch' => $branch_id ? get_the_title($branch_id) : '',
+                'status' => $status,
+                'current' => $seated,
+                'next' => $next,
+                'flags' => $flags,
+                'orders' => $dr ? array('count' => $n_orders, 'due' => $dr['due']) : null,
+                'waiter' => $dr ? (int) $dr['waiter'] : 0,
+                'bill' => $dr ? (int) $dr['bill'] : 0,
+                'today' => $list,
+            );
         }
 
-        // Group tables by zone
-        $zone_tables = array();
-        foreach ($tables as $table) {
-            $zone = get_post_meta($table->ID, '_zone', true) ?: 'indoor';
-            $zone_tables[$zone][] = $table;
+        $sum['bookings'] = $bookings;
+        $sum['guests'] = $guests;
+
+        return array('currency' => $currency, 'summary' => $sum, 'tables' => $out);
+    }
+
+    public function ajax_live_snapshot()
+    {
+        check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
+        wp_send_json_success($this->build_live_snapshot());
+    }
+
+    private function render_map_view()
+    {
+        $snap = $this->build_live_snapshot();
+        $zones = array();
+        foreach ($snap['tables'] as $t) {
+            $zones[$t['zone']] = true;
         }
         ?>
-        <div class="live-map-container">
-            <!-- Professional Live Status Toolbar -->
-            <div class="map-toolbar premium-toolbar">
-                <div class="status-legend">
-                    <span class="status-indicator free">
-                        <span class="indicator-dot"></span>
-                        <span class="indicator-text">Available</span>
-                    </span>
-                    <span class="status-indicator reserved">
-                        <span class="indicator-dot"></span>
-                        <span class="indicator-text">Reserved</span>
-                    </span>
-                    <span class="status-indicator occupied">
-                        <span class="indicator-dot"></span>
-                        <span class="indicator-text">Occupied</span>
-                    </span>
-                </div>
-
-                <div class="toolbar-actions">
-                    <button id="refresh-live-status" class="button premium-button">
-                        <span class="btn-icon">🔄</span>
-                        Refresh Live Status
-                    </button>
-                    <button id="toggle-arrangement-mode" class="button premium-button">
-                        <span class="btn-icon">🏗️</span>
-                        Floor Plan Mode
-                    </button>
-                    <div class="live-indicator">
-                        <span class="live-dot pulsing"></span>
-                        <span class="live-text">Live View Active</span>
-                        <span class="current-time-display"><?php echo date('H:i'); ?></span>
-                    </div>
-                </div>
-
-                <div class="quick-stats">
-                    <span class="stat-item">
-                        <span class="stat-number"><?php echo count($tables); ?></span>
-                        <span class="stat-label">Tables</span>
-                    </span>
-                    <span class="stat-item">
-                        <span class="stat-number"><?php echo $reservations_today->found_posts; ?></span>
-                        <span class="stat-label">Today's Bookings</span>
-                    </span>
-                    <span class="stat-item">
-                        <span class="stat-number"><?php echo array_count_values($table_status)['free'] ?? 0; ?></span>
-                        <span class="stat-label">Available Now</span>
-                    </span>
-                </div>
+        <div id="mpl-root">
+            <div class="mpl-top">
+                <div class="mpl-tile free"><b id="mpl-sum-free">0</b><span><?php esc_html_e('Available', 'menu-popup'); ?></span></div>
+                <div class="mpl-tile reserved"><b id="mpl-sum-reserved">0</b><span><?php esc_html_e('Reserved soon', 'menu-popup'); ?></span></div>
+                <div class="mpl-tile occupied"><b id="mpl-sum-occupied">0</b><span><?php esc_html_e('Occupied', 'menu-popup'); ?></span></div>
+                <div class="mpl-tile attention"><b id="mpl-sum-attention">0</b><span><?php esc_html_e('Need attention', 'menu-popup'); ?></span></div>
+                <div class="mpl-tile"><b id="mpl-sum-bookings">0</b><span><?php esc_html_e("Today's bookings", 'menu-popup'); ?></span></div>
+                <div class="mpl-tile"><b id="mpl-sum-guests">0</b><span><?php esc_html_e('Guests expected', 'menu-popup'); ?></span></div>
             </div>
 
-            <!-- Restaurant Floor Plan Canvas -->
-            <div class="restaurant-floor-plan live-floor-plan" id="live-floor-plan">
-                <div class="floor-plan-header">
-                    <h3 class="floor-plan-title">🍽️ Restaurant Floor Plan - Live Status</h3>
-                    <p class="floor-plan-subtitle">
-                        <?php echo count($tables); ?> tables • <?php echo date('l, F j, Y'); ?> • Live updates every 30 seconds
-                    </p>
-                </div>
-
-                <?php
-                // Render tables by zone
-                foreach ($zone_tables as $zone => $zone_tables_list):
-                    if (empty($zone_tables_list)) continue;
-
-                    $zone_title = ucfirst($zone) . ' Area';
-                    $zone_icon = ($zone === 'vip') ? '👑' : (($zone === 'terrace') ? '🌳' : '🏠');
-                    $total_tables_in_zone = count($zone_tables_list);
-                    ?>
-                    <div class="floor-plan-zone zone-<?php echo $zone; ?>">
-                        <div class="zone-header">
-                            <span class="zone-icon"><?php echo $zone_icon; ?></span>
-                            <span class="zone-title"><?php echo $zone_title; ?></span>
-                            <span class="zone-count"><?php echo $total_tables_in_zone; ?> tables</span>
-                        </div>
-
-                        <div class="zone-floor-plan">
-                            <?php foreach ($zone_tables_list as $table):
-                                $table_id = $table->ID;
-                                $table_name = $table->post_title;
-                                $capacity = get_post_meta($table_id, '_max_pax', true) ?: 4;
-                                $shape = get_post_meta($table_id, '_shape', true) ?: 'round';
-                                $status = $table_status[$table_id];
-                                $position_x = get_post_meta($table_id, '_table_position_x', true) ?: (50 + ($table_id % 8) * 100);
-                                $position_y = get_post_meta($table_id, '_table_position_y', true) ?: (50 + (floor($table_id / 8) % 4) * 80);
-
-                                // Size based on capacity
-                                $size_multiplier = ($capacity <= 2) ? 0.8 : (($capacity <= 4) ? 1 : 1.2);
-                                $base_width = 80 * $size_multiplier;
-                                $base_height = 80 * $size_multiplier;
-
-                                // Status colors and information
-                                $status_classes = "table-node status-$status shape-$shape zone-$zone capacity-$capacity";
-                                $status_text = ($status === 'free') ? 'Available' : (($status === 'reserved') ? 'Reserved' : 'Occupied');
-
-                                // Get current reservation details
-                                $current_reservation = null;
-                                if (!empty($table_reservations[$table_id])) {
-                                    foreach ($table_reservations[$table_id] as $reservation) {
-                                        if ($reservation['status'] === 'confirmed') {
-                                            $current_reservation = $reservation;
-                                            break;
-                                        }
-                                    }
-                                }
-                                ?>
-                                <div class="table-node <?php echo $status_classes; ?>"
-                                     data-id="<?php echo $table_id; ?>"
-                                     data-shape="<?php echo $shape; ?>"
-                                     data-zone="<?php echo $zone; ?>"
-                                     data-capacity="<?php echo $capacity; ?>"
-                                     id="table-<?php echo $table_id; ?>"
-                                     style="left: <?php echo $position_x; ?>px; top: <?php echo $position_y; ?>px; width: <?php echo $base_width; ?>px; height: <?php echo $base_height; ?>px;">
-
-                                    <div class="table-visual">
-                                        <div class="table-shape shape-<?php echo $shape; ?>" style="font-size: <?php echo 12 * $size_multiplier; ?>px;">
-                                            <?php echo esc_html($table_name); ?>
-                                        </div>
-                                        <div class="table-status-indicator <?php echo $status; ?>">
-                                            <span class="status-dot"></span>
-                                        </div>
-                                    </div>
-
-                                    <div class="table-info">
-                                        <div class="table-status"><?php echo $status_text; ?></div>
-                                        <div class="table-capacity"><?php echo $capacity; ?> seats</div>
-                                        <?php if ($current_reservation): ?>
-                                            <div class="table-reservation-info">
-                                                <div class="customer-name">👤 <?php echo esc_html($current_reservation['customer']); ?></div>
-                                                <div class="reservation-time">⏰ <?php echo $current_reservation['time']; ?> (<?php echo $current_reservation['party_size']; ?> guests)</div>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
+            <div class="mpl-bar">
+                <button type="button" class="mpl-chip is-on" data-filter="all"><?php esc_html_e('All', 'menu-popup'); ?><b id="mpl-chip-all">0</b></button>
+                <button type="button" class="mpl-chip" data-filter="free"><?php esc_html_e('Available', 'menu-popup'); ?><b id="mpl-chip-free">0</b></button>
+                <button type="button" class="mpl-chip" data-filter="reserved"><?php esc_html_e('Reserved', 'menu-popup'); ?><b id="mpl-chip-reserved">0</b></button>
+                <button type="button" class="mpl-chip" data-filter="occupied"><?php esc_html_e('Occupied', 'menu-popup'); ?><b id="mpl-chip-occupied">0</b></button>
+                <button type="button" class="mpl-chip" data-filter="attention"><?php esc_html_e('Need attention', 'menu-popup'); ?><b id="mpl-chip-attention">0</b></button>
+                <?php if (count($zones) > 1): ?>
+                    <select id="mpl-zone">
+                        <option value="all"><?php esc_html_e('All areas', 'menu-popup'); ?></option>
+                        <?php foreach (array_keys($zones) as $z): ?>
+                            <option value="<?php echo esc_attr($z); ?>"><?php echo esc_html(ucfirst($z)); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+                <span class="mpl-spacer"></span>
+                <span id="mpl-live" class="mpl-live"><span id="mpl-updated"></span></span>
+                <button type="button" id="mpl-refresh" class="button"><?php esc_html_e('Refresh', 'menu-popup'); ?></button>
             </div>
 
-            <script>
-            jQuery(document).ready(function($) {
-                // Define AJAX variables with fallback if not localized
-                if (typeof menuPopupReservation === 'undefined') {
-                    window.menuPopupReservation = {
-                        ajax_url: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
-                        nonce: '<?php echo wp_create_nonce('menu_popup_reservation_admin_nonce'); ?>'
-                    };
-                }
-
-                // Debug: Check if AJAX variables are loaded
-                console.log('MenuPopupReservation AJAX Debug:', menuPopupReservation);
-                console.log('AJAX URL:', menuPopupReservation.ajax_url);
-                console.log('AJAX Nonce:', menuPopupReservation.nonce);
-
-                let arrangementMode = false;
-                let statusRefreshInterval;
-
-                // Auto-refresh live status every 30 seconds
-                function startAutoRefresh() {
-                    statusRefreshInterval = setInterval(function() {
-                        refreshTableStatus();
-                        updateCurrentTime();
-                    }, 30000);
-                }
-
-                function stopAutoRefresh() {
-                    if (statusRefreshInterval) {
-                        clearInterval(statusRefreshInterval);
-                        statusRefreshInterval = null;
-                    }
-                }
-
-                function updateCurrentTime() {
-                    const now = new Date();
-                    const timeString = now.toTimeString().substring(0, 5);
-                    $('.current-time-display').text(timeString);
-                }
-
-                function refreshTableStatus() {
-                    $.ajax({
-                        url: menuPopupReservation.ajax_url,
-                        type: 'POST',
-                        data: {
-                            action: 'menu_popup_get_live_status',
-                            nonce: menuPopupReservation.nonce
-                        },
-                        success: function(response) {
-                            if (response.success && response.data) {
-                                // Update table statuses
-                                $.each(response.data, function(tableId, status) {
-                                    const tableElement = $('#table-' + tableId);
-                                    if (tableElement.length) {
-                                        // Remove old status classes
-                                        tableElement.removeClass('status-free status-reserved status-occupied');
-                                        // Add new status class
-                                        tableElement.addClass('status-' + status);
-
-                                        // Update status text
-                                        const statusText = tableElement.find('.table-status');
-                                        const statusTexts = {
-                                            'free': 'Available',
-                                            'reserved': 'Reserved',
-                                            'occupied': 'Occupied'
-                                        };
-                                        statusText.text(statusTexts[status] || 'Unknown');
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-
-                // Manual refresh button
-                $('#refresh-live-status').on('click', function() {
-                    $(this).prop('disabled', true).text('Refreshing...');
-                    refreshTableStatus();
-                    setTimeout(function() {
-                        $('#refresh-live-status').prop('disabled', false).html('<span class="btn-icon">🔄</span> Refresh Live Status');
-                    }, 1000);
-                });
-
-                // Toggle arrangement mode
-                $('#toggle-arrangement-mode').on('click', function() {
-                    arrangementMode = !arrangementMode;
-
-                    if (arrangementMode) {
-                        stopAutoRefresh();
-                        $('.table-node').addClass('arrangement-mode').draggable({
-                            containment: ".restaurant-floor-plan",
-                            stop: function(event, ui) {
-                                const tableId = $(this).data('id');
-                                const x = ui.position.left;
-                                const y = ui.position.top;
-
-                                // Save position via AJAX
-                                $.ajax({
-                                    url: menuPopupReservation.ajax_url,
-                                    type: 'POST',
-                                    data: {
-                                        action: 'menu_popup_save_table_position',
-                                        table_id: tableId,
-                                        x: x,
-                                        y: y,
-                                        nonce: menuPopupReservation.nonce
-                                    },
-                                    success: function(response) {
-                                        console.log('Position saved for table ' + tableId);
-                                    }
-                                });
-                            }
-                        });
-                        $(this).html('<span class="btn-icon">✏️</span> Exit Floor Plan Mode');
-                        $('.live-indicator').hide();
-                    } else {
-                        startAutoRefresh();
-                        $('.table-node').removeClass('arrangement-mode').draggable('destroy');
-                        $(this).html('<span class="btn-icon">🏗️</span> Floor Plan Mode');
-                        $('.live-indicator').show();
-                    }
-                });
-
-                // TABLE CLICK FOR INFORMATION DISPLAY - SHOW ALL RESERVATIONS
-                $('.table-node').on('click', function(e) {
-                    // Don't trigger if in arrangement mode
-                    if (arrangementMode) return;
-
-                    e.stopPropagation();
-                    const $table = $(this);
-                    const tableId = $table.data('id');
-                    const tableName = $table.find('.table-name').text();
-                    const tableStatus = $table.find('.table-status').text();
-                    const tableCapacity = $table.find('.table-capacity').text();
-
-                    // Remove active from all tables
-                    $('.table-node').removeClass('active');
-                    // Add active to clicked table
-                    $table.addClass('active');
-
-                    // Get ALL reservations for this table today
-                    getAllTableReservations(tableId, tableName, tableStatus, tableCapacity);
-                });
-
-                function getAllTableReservations(tableId, tableName, tableStatus, tableCapacity) {
-                    $.ajax({
-                        url: menuPopupReservation.ajax_url,
-                        type: 'POST',
-                        data: {
-                            action: 'menu_popup_get_table_reservations',
-                            table_id: tableId,
-                            nonce: menuPopupReservation.nonce
-                        },
-                        success: function(response) {
-                            let infoText = 'Table: ' + tableName + '\nStatus: ' + tableStatus + '\nCapacity: ' + tableCapacity;
-
-                            if (response.success && response.data && response.data.length > 0) {
-                                infoText += '\n\n📅 TODAY\'S RESERVATIONS (' + response.data.length + '):';
-
-                                response.data.forEach(function(reservation, index) {
-                                    const time = reservation.time || 'N/A';
-                                    const customer = reservation.customer || 'Unknown';
-                                    const partySize = reservation.party_size || 'N/A';
-                                    const status = reservation.status || 'unknown';
-
-                                    const statusIcon = (status === 'confirmed') ? '✅' : (status === 'pending') ? '⏳' : '❓';
-
-                                    infoText += '\n\n' + (index + 1) + '. [' + statusIcon + '] ' + status.toUpperCase();
-                                    infoText += '\n   👤 Customer: ' + customer;
-                                    infoText += '\n   ⏰ Time: ' + time;
-                                    infoText += '\n   👥 Party Size: ' + partySize + ' guests';
-                                });
-                            } else {
-                                infoText += '\n\n📅 No reservations for today';
-                            }
-
-                            alert(infoText);
-                        },
-                        error: function() {
-                            const infoText = 'Table: ' + tableName + '\nStatus: ' + tableStatus + '\nCapacity: ' + tableCapacity + '\n\n❌ Could not load reservation details';
-                            alert(infoText);
-                        }
-                    });
-                }
-
-                // Start auto-refresh when page loads
-                startAutoRefresh();
-
-                // Initial time update
-                updateCurrentTime();
-
-                // Clean up on page unload
-                $(window).on('beforeunload', function() {
-                    stopAutoRefresh();
-                });
-            });
-            </script>
-
-            <div class="map-instructions">
-                <p><strong>Live Floor Plan Instructions:</strong></p>
-                <ul>
-                    <li><strong>Real-time Status:</strong> Tables update automatically every 30 seconds</li>
-                    <li><strong>Color Coding:</strong> Green = Available, Yellow = Reserved, Red = Occupied</li>
-                    <li><strong>Floor Plan Mode:</strong> Click to drag and rearrange table positions</li>
-                    <li><strong>Table Details:</strong> Hover over tables to see reservation information</li>
-                </ul>
-            </div>
+            <div id="mpl-board"></div>
         </div>
+        <div id="mpl-shade"></div>
+        <aside id="mpl-panel" aria-live="polite"></aside>
         <?php
     }
 
@@ -968,24 +773,6 @@ class Menu_Popup_Reservations_Admin_Dashboard
         }
 
         wp_send_json_success($reservations_data);
-    }
-
-    public function save_table_position()
-    {
-        check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
-
-        $table_id = intval($_POST['table_id']);
-        $x = floatval($_POST['x']);
-        $y = floatval($_POST['y']);
-
-        if (!$table_id) {
-            wp_send_json_error('Invalid table ID');
-        }
-
-        update_post_meta($table_id, '_table_position_x', $x);
-        update_post_meta($table_id, '_table_position_y', $y);
-
-        wp_send_json_success();
     }
 }
 

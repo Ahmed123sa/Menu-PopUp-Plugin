@@ -4978,6 +4978,9 @@ class Menu_Popup_Settings {
 
     public function get_branches_for_menu_ajax() {
         check_ajax_referer('menu_popup_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
 
         $menu_id = sanitize_text_field($_POST['menu_id']);
         $menus = get_option('menu_popup_menus', array());

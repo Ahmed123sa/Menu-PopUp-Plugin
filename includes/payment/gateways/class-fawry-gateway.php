@@ -275,7 +275,15 @@ class FawryPaymentGateway extends PaymentGatewayBase {
             $sandbox = $this->get_setting('sandbox', '1');
             $is_sandbox = ($sandbox === '1' || $sandbox === true || $sandbox === 'on' || $sandbox === 1);
             
-            if ($is_sandbox && (empty($this->get_merchant_code()) || empty($this->get_secure_key()))) {
+            if (empty($this->get_merchant_code()) || empty($this->get_secure_key())) {
+                // Without credentials nothing real can happen. Only a debug
+                // site may pretend; a live site must refuse.
+                if (!(defined('WP_DEBUG') && WP_DEBUG)) {
+                    return [
+                        'success' => false,
+                        'message' => __('Fawry is not configured yet', 'menu-popup')
+                    ];
+                }
                 $this->log('info', 'Fawry sandbox mode - simulating payment', ['reference' => $reference]);
                 
                 return [
@@ -444,24 +452,24 @@ class FawryPaymentGateway extends PaymentGatewayBase {
      * @return bool
      */
     protected function verify_callback_signature(array $data, string $signature): bool {
-        if (empty($signature)) {
-            // For testing, allow empty signature
-            return true;
+        $key = $this->get_secure_key();
+        // Fail closed: no key or no signature means the call is not trusted
+        if ($key === '' || $signature === '') {
+            return false;
         }
-        
-        // Build signature data
-        $signature_data = 
-            $data['merchantCode'] ?? '' . 
-            $data['merchantRefNumber'] ?? '' . 
-            $data['fawryRefNo'] ?? '' . 
-            $data['amount'] ?? '' . 
-            $this->get_secure_key();
-        
+
+        $signature_data =
+            ($data['merchantCode'] ?? '') .
+            ($data['merchantRefNumber'] ?? '') .
+            ($data['fawryRefNo'] ?? '') .
+            ($data['amount'] ?? '') .
+            $key;
+
         $expected_signature = hash('sha256', $signature_data);
-        
+
         return hash_equals($expected_signature, $signature);
     }
-    
+
     /**
      * Send API request to Fawry
      * 

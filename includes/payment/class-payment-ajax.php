@@ -130,36 +130,40 @@ class PaymentAJAX {
             // Sanitize order data
             $order_data = $this->sanitize_order_data($order_data);
             
-            // Ensure order_id exists for validation
-            if (empty($order_data['order_id']) && empty($order_data['id'])) {
-                $order_data['order_id'] = 'TEST-' . time();
-                $order_data['id'] = $order_data['order_id'];
-            }
-            
-            // For COD and Bank Transfer, simulate successful payment
-            if ($payment_method === 'cod' || $payment_method === 'bank_transfer') {
-                wp_send_json_success([
-                    'success' => true,
-                    'message' => __('Order placed successfully!', 'menu-popup'),
-                    'payment_status' => 'pending',
-                    'order_id' => $order_data['order_id'] ?? 0
+            // Only online gateways go through here; cash and transfers are
+            // handled by the order service when the order is created.
+            if ($payment_method !== 'fawry') {
+                wp_send_json_error([
+                    'message' => __('Unsupported payment method', 'menu-popup'),
+                    'code' => 'invalid_method'
                 ]);
                 return;
             }
-            
-            // For Fawry - skip database and simulate success for testing
-            if ($payment_method === 'fawry') {
-                wp_send_json_success([
-                    'success' => true,
-                    'message' => __('Fawry payment initialized (Test Mode)', 'menu-popup'),
-                    'payment_status' => 'processing',
-                    'payment_url' => '#fawry-test-mode',
-                    'order_id' => $order_data['order_id'] ?? 0,
-                    'reference_number' => 'FW-TEST-' . time()
+
+            // The order must already exist on the server, and every amount
+            // is taken from it, never from what the browser sent.
+            $order_id = absint($order_data['order_id'] ?? $order_data['id'] ?? 0);
+            $order_post = $order_id ? get_post($order_id) : null;
+            if (!$order_post || $order_post->post_type !== 'menu_order'
+                || get_post_meta($order_id, '_payment_method', true) !== 'fawry'
+                || get_post_meta($order_id, '_payment_status', true) === 'paid') {
+                wp_send_json_error([
+                    'message' => __('Order not found', 'menu-popup'),
+                    'code' => 'ORDER_NOT_FOUND'
                 ]);
                 return;
             }
-            
+            $order_data['order_id']       = $order_id;
+            $order_data['id']             = $order_id;
+            $order_data['order_number']   = get_post_meta($order_id, '_order_number', true);
+            $order_data['customer_name']  = get_post_meta($order_id, '_customer_name', true);
+            $order_data['customer_phone'] = get_post_meta($order_id, '_customer_phone', true);
+            $order_data['customer_email'] = get_post_meta($order_id, '_customer_email', true);
+            $order_data['subtotal']       = (float) get_post_meta($order_id, '_order_subtotal', true);
+            $order_data['tax']            = (float) get_post_meta($order_id, '_order_tax', true);
+            $order_data['delivery_fee']   = (float) get_post_meta($order_id, '_delivery_fee', true);
+            $order_data['total']          = (float) get_post_meta($order_id, '_order_total', true);
+
             // Process other payment methods
             $result = $this->payment_manager->process_payment($payment_method, $order_data);
             
@@ -230,7 +234,7 @@ class PaymentAJAX {
         $gateway_id = sanitize_text_field($_GET['gateway'] ?? 'fawry');
         
         // Log callback
-        error_log('Fawry callback received: ' . json_encode($callback_data));
+        error_log('Fawry callback received for ref ' . sanitize_text_field($callback_data['merchantRefNumber'] ?? ''));
         
         // Handle callback
         $result = $this->payment_manager->handle_callback($gateway_id, $callback_data);

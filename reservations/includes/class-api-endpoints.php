@@ -27,7 +27,6 @@ class Menu_Popup_Reservations_API
         add_action('wp_ajax_menu_popup_get_available_tables', array($this, 'get_available_tables'));
         add_action('wp_ajax_nopriv_menu_popup_get_available_tables', array($this, 'get_available_tables'));
 
-        add_action('wp_ajax_menu_popup_get_table_reservations', array($this, 'get_table_reservations'));
     }
 
     public function get_branches()

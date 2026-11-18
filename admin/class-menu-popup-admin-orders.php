@@ -22,8 +22,6 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
         add_action('wp_ajax_get_orders', array($this, 'ajax_get_orders'));
         add_action('wp_ajax_update_order_status', array($this, 'ajax_update_order_status'));
         add_action('wp_ajax_delete_order', array($this, 'ajax_delete_order'));
-        add_action('wp_ajax_save_order', array($this, 'ajax_save_order'));
-        add_action('wp_ajax_nopriv_save_order', array($this, 'ajax_save_order'));
         add_action('wp_ajax_get_order_details', array($this, 'ajax_get_order_details'));
         add_action('wp_ajax_export_orders_data', array($this, 'ajax_export_orders_data'));
 
@@ -475,60 +473,6 @@ class Menu_Popup_Admin_Orders extends Menu_Popup_Abstract_Handler {
 
         $query = new WP_Query($args);
         return $query->found_posts;
-    }
-
-    /**
-     * AJAX handler to save order to database
-     */
-    public function ajax_save_order() {
-        check_ajax_referer('menu_popup_nonce', 'nonce');
-
-        $order_data = $_POST['order_data'];
-
-        if (!$order_data) {
-            wp_send_json_error(__('No order data provided', 'menu-popup'));
-        }
-
-        // Generate unique order number
-        $order_number = 'ORD-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-
-        // Create order post
-        $order_id = wp_insert_post(array(
-            'post_title' => 'Order #' . $order_number,
-            'post_type' => 'menu_order',
-            'post_status' => 'publish',
-            'post_date' => current_time('mysql')
-        ));
-
-        if ($order_id) {
-            // Save order meta data
-            update_post_meta($order_id, '_order_number', $order_number);
-            update_post_meta($order_id, '_customer_name', sanitize_text_field($order_data['customer_name']));
-            update_post_meta($order_id, '_customer_phone', sanitize_text_field($order_data['customer_phone']));
-            update_post_meta($order_id, '_customer_email', sanitize_email($order_data['customer_email']));
-            update_post_meta($order_id, '_customer_address', sanitize_textarea_field($order_data['customer_address']));
-            update_post_meta($order_id, '_special_instructions', sanitize_textarea_field($order_data['special_instructions']));
-            update_post_meta($order_id, '_order_items', $order_data['order_items']);
-            update_post_meta($order_id, '_order_subtotal', floatval($order_data['subtotal']));
-            update_post_meta($order_id, '_order_tax', floatval($order_data['tax']));
-            update_post_meta($order_id, '_order_total', floatval($order_data['total']));
-            update_post_meta($order_id, '_order_status', 'pending');
-            update_post_meta($order_id, '_currency_symbol', sanitize_text_field($order_data['currency_symbol']));
-
-            // Orders sent by an outdated page keep client-side prices; flag them for review
-            update_post_meta($order_id, '_order_source', 'legacy');
-            update_post_meta($order_id, '_needs_review', '1');
-            
-            // Save payment method
-            if (!empty($order_data['payment_method'])) {
-                update_post_meta($order_id, '_payment_method', sanitize_text_field($order_data['payment_method']));
-                update_post_meta($order_id, '_payment_status', 'pending');
-            }
-
-            wp_send_json_success(__('Order saved successfully', 'menu-popup'));
-        } else {
-            wp_send_json_error(__('Failed to save order', 'menu-popup'));
-        }
     }
 
     /**

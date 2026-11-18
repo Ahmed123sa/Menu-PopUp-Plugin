@@ -829,6 +829,10 @@ class Menu_Popup_Reservations_Admin_Dashboard
     public function handle_delete_reservation()
     {
         check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
         $reservation_id = intval($_POST['reservation_id']);
 
         if (wp_delete_post($reservation_id, true)) {
@@ -841,6 +845,10 @@ class Menu_Popup_Reservations_Admin_Dashboard
     public function handle_bulk_delete_reservations()
     {
         check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
         $reservation_ids = array_map('intval', $_POST['reservation_ids'] ?? array());
 
         if (empty($reservation_ids)) {
@@ -865,6 +873,10 @@ class Menu_Popup_Reservations_Admin_Dashboard
     public function get_live_status()
     {
         check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
 
         // Return live status of all tables for today
         $today = date('Y-m-d');
@@ -906,6 +918,10 @@ class Menu_Popup_Reservations_Admin_Dashboard
     public function get_table_reservations()
     {
         check_ajax_referer('menu_popup_reservation_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+            return;
+        }
 
         $table_id = intval($_POST['table_id']);
         $today = date('Y-m-d');

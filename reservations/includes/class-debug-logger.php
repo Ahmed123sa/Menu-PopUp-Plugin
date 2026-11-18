@@ -23,7 +23,6 @@ class Reservation_Debug_Logger {
 
         if (self::$debug_enabled) {
             add_action('wp_ajax_menu_popup_debug_log', array(__CLASS__, 'view_debug_log'));
-            add_action('wp_ajax_nopriv_menu_popup_debug_log', array(__CLASS__, 'view_debug_log'));
         }
     }
 

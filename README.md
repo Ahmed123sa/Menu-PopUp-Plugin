@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.6.0 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.6.1 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -245,7 +245,11 @@ Everything together:
 
 #### Behaviour notes
 
-- If **Force Branch Selection** is on (**Settings → General**), visitors first pick a city/area and branch. The menu then opens with `?branch=<id>` in the address bar.
+- If **Force Branch Selection** is on (**Settings → General**), visitors first pick a city/area and branch. The menu then opens with `?branch=<id>` in the address bar. The branch is remembered on the visitor's device, so the next visit opens that branch directly.
+- Only **published** branches are offered. A `?branch=` value that is not a published branch is ignored.
+- A city is listed only if it has a published branch (branches in its sub-areas count). If any branch has no city, the city step is skipped and all branches are listed together.
+- A branch button is shown above the menu whenever a branch is selected, or when the site has more than one branch. The cart is emptied if the visitor moves from one branch to another, because items can differ between branches.
+- Items with a branch selected on the item are shown only for that branch. Items with no branch are shown everywhere. Without a selected branch, items of every branch are shown.
 - If a menu is linked to certain branches and the visitor picks a branch that is not one of them, a "No menu for this branch" message is shown.
 - A wrong `menu` slug shows a "Menu not found" message with a link to the Menus screen (useful while building the page).
 - The shortcode renders nothing during AJAX, REST or POST requests. This is on purpose, so it never breaks JSON responses.
@@ -513,6 +517,13 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.6.1**
+- Branches: fixed a leak where `?branch=<any post id>` printed that post's title (for example a customer name from a reservation) in the branch button; invalid or unpublished branches in the address bar are now ignored
+- Menu filter: a category that is not part of the chosen menu, an unknown menu, or a menu not offered at the selected branch now shows nothing instead of every item (page and live filtering behave the same)
+- Menu filter: items keep the order set in the admin after choosing a category or searching
+- Branch selection: remembers the last branch, lists only published branches and cities that really have branches, and no longer breaks on cached pages
+- Branch change window: the close button now works; removed an unused public endpoint
 
 **7.6.0**
 - License activation: the plugin runs only on a domain with a valid license key

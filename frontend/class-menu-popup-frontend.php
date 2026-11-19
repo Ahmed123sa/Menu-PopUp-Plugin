@@ -22,8 +22,6 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         add_action('wp_ajax_nopriv_filter_menu_items', array($this, 'ajax_filter_menu_items'));
         add_action('wp_ajax_get_branches_by_city', array($this, 'ajax_get_branches_by_city'));
         add_action('wp_ajax_nopriv_get_branches_by_city', array($this, 'ajax_get_branches_by_city'));
-        add_action('wp_ajax_switch_branch', array($this, 'ajax_switch_branch'));
-        add_action('wp_ajax_nopriv_switch_branch', array($this, 'ajax_switch_branch'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_swiper_assets'));
     }
 
@@ -86,7 +84,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         }
 
         // Fetch active branch ID (used to filter zones)
-        $active_branch_id = isset($_GET['branch']) ? absint($_GET['branch']) : 0;
+        $active_branch_id = $this->requested_branch();
 
         // Fetch delivery zones exclusively from the new database structure
         $delivery_zones = array();
@@ -246,10 +244,11 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         // Determine which categories to show based on menu filter
         $allowed_categories = array();
         $menu_found = false;
+        $category_blocked = false;
         $menu_branches = array();
 
         // Get branch filter if set
-        $branch_filter = isset($_GET['branch']) ? sanitize_text_field($_GET['branch']) : '';
+        $branch_filter = $this->requested_branch() > 0 ? (string) $this->requested_branch() : '';
 
         if ($atts['menu'] !== 'all') {
             // Find the menu and get its associated categories
@@ -315,6 +314,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             if (!empty($allowed_categories)) {
                 // If we already have menu-based categories, only show intersection
                 $allowed_categories = array_intersect($allowed_categories, array($atts['category']));
+                $category_blocked = empty($allowed_categories);
             } else {
                 // Otherwise, use the specific category
                 $allowed_categories = array($atts['category']);
@@ -368,6 +368,9 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             );
         }
 
+        if ($category_blocked) {
+            $post_args['post__in'] = array(0);
+        }
         $posts_with_menu_items = get_posts($post_args);
 
         // Get items from menu_item CPT
@@ -412,6 +415,9 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             );
         }
 
+        if ($category_blocked) {
+            $cpt_args['post__in'] = array(0);
+        }
         $cpt_menu_items = get_posts($cpt_args);
 
         // Combine both arrays
@@ -491,7 +497,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         $direction = ($current_lang === 'ar') ? 'rtl' : 'ltr';
 
         // Get branch filter if set
-        $branch_filter = isset($_GET['branch']) ? sanitize_text_field($_GET['branch']) : '';
+        $branch_filter = $this->requested_branch() > 0 ? (string) $this->requested_branch() : '';
 
         // Get layout type from settings
         $layout_type = get_option('menu_popup_layout_type', 'grid');
@@ -587,16 +593,15 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         <div class="menu-popup-container <?php echo $css_class; ?> layout-<?php echo esc_attr($layout_type); ?> <?php echo get_option('menu_popup_enable_videos') == '1' ? 'videos-enabled' : 'videos-disabled'; ?>" dir="<?php echo $direction; ?>" data-layout="<?php echo esc_attr($layout_type); ?>" data-menu="<?php echo esc_attr($atts['menu']); ?>">
             <!-- Language Switcher -->
             <div class="language-switcher">
-                <a href="<?php echo add_query_arg('lang', 'en'); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'en' ? 'active' : ''; ?>">EN</a>
-                <a href="<?php echo add_query_arg('lang', 'ar'); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'ar' ? 'active' : ''; ?>">العربية</a>
+                <a href="<?php echo esc_url(add_query_arg('lang', 'en')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'en' ? 'active' : ''; ?>">EN</a>
+                <a href="<?php echo esc_url(add_query_arg('lang', 'ar')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'ar' ? 'active' : ''; ?>">العربية</a>
             </div>
             <!-- Branch Selector -->
-            <?php if (isset($_GET['branch'])): // Only show if branch already selected ?>
+            <?php $current_branch_id = $this->requested_branch(); ?>
+            <?php if ($current_branch_id > 0 || count($this->published_branches()) > 1): ?>
             <div class="branch-switcher">
                 <button id="changeBranch">
-                    <?php $current_branch_id = sanitize_text_field($_GET['branch']); ?>
-                    <?php $branch_post = get_post($current_branch_id); ?>
-                    <?php echo esc_html($branch_post ? $branch_post->post_title : __('Change Location', 'menu-popup')); ?>
+                    <?php echo esc_html($current_branch_id > 0 ? get_the_title($current_branch_id) : __('Choose your branch', 'menu-popup')); ?>
                     <span class="change-icon">↓</span>
                 </button>
             </div>
@@ -994,6 +999,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         $voice_search_type = sanitize_text_field($_POST['voice_search_type'] ?? '');
         $voice_search_query = sanitize_text_field($_POST['voice_search_query'] ?? '');
         $branch_filter = sanitize_text_field($_POST['branch'] ?? '');
+        $branch_filter = $this->valid_branch_id($branch_filter) > 0 ? (string) $this->valid_branch_id($branch_filter) : '';
         $search_query = sanitize_text_field($_POST['search'] ?? '');
         $offset = intval($_POST['offset'] ?? 0);
         $limit = intval($_POST['limit'] ?? -1);
@@ -1003,10 +1009,16 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
         // Determine which categories to show based on menu filter
         $allowed_categories = array();
+        $menu_found = ($menu === 'all');
+        $menu_branches = array();
         if ($menu !== 'all') {
             // Find the menu and get its associated categories
             foreach ($menus as $menu_data) {
                 if (isset($menu_data['slug']) && $menu_data['slug'] === $menu) {
+                    $menu_found = true;
+                    if (!empty($menu_data['branches']) && is_array($menu_data['branches'])) {
+                        $menu_branches = array_map('intval', $menu_data['branches']);
+                    }
                     if (!empty($menu_data['categories']) && is_array($menu_data['categories'])) {
                         $allowed_categories = $menu_data['categories'];
                     }
@@ -1015,10 +1027,19 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             }
         }
 
+        // Same rules as the page itself: unknown menu, empty menu, a menu that is not offered
+        // at this branch, or a category outside the menu all give an empty list
+        $no_results = !$menu_found
+            || ($menu !== 'all' && empty($allowed_categories))
+            || ($menu !== 'all' && $branch_filter !== '' && !empty($menu_branches) && !in_array((int) $branch_filter, $menu_branches, true));
+
         // Apply category filter
         if ($category !== 'all') {
             if (!empty($allowed_categories)) {
                 $allowed_categories = array_intersect($allowed_categories, array($category));
+                if (empty($allowed_categories)) {
+                    $no_results = true;
+                }
             } else {
                 $allowed_categories = array($category);
             }
@@ -1159,6 +1180,19 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             }
         }
 
+        // Same order as the page: the order the owner set, not newest first
+        if (empty($post_args['orderby'])) {
+            $post_args['orderby'] = 'menu_order';
+            $post_args['order'] = 'ASC';
+        }
+        if (empty($cpt_args['orderby'])) {
+            $cpt_args['orderby'] = 'menu_order';
+            $cpt_args['order'] = 'ASC';
+        }
+        if ($no_results) {
+            $post_args['post__in'] = array(0);
+            $cpt_args['post__in'] = array(0);
+        }
         $posts_with_menu_items = get_posts($post_args);
         $cpt_menu_items = get_posts($cpt_args);
         $menu_items = array_merge($posts_with_menu_items, $cpt_menu_items);
@@ -1306,12 +1340,12 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
     }
 
     public function ajax_get_branches_by_city() {
-        check_ajax_referer('menu_popup_nonce', 'nonce');
-
+        // Branch names and addresses are public, so no nonce: a cached page must not break this
         $city_slug = sanitize_text_field($_POST['city_slug']);
 
         $args = array(
             'post_type' => 'menu_popup_branch',
+            'post_status' => 'publish',
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC',
@@ -1374,65 +1408,94 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         wp_send_json_success($output);
     }
 
-    public function ajax_switch_branch() {
-        check_ajax_referer('menu_popup_nonce', 'nonce');
+    /**
+     * Branch id from the address bar, only if it is a real, published branch.
+     */
+    private function requested_branch() {
+        return $this->valid_branch_id(isset($_GET['branch']) ? $_GET['branch'] : 0);
+    }
 
-        $branch_id = intval($_POST['branch_id']);
-        $category = sanitize_text_field($_POST['category'] ?? 'all');
-        $menu = sanitize_text_field($_POST['menu'] ?? 'all');
-        
-        // Get the branch post to get its slug
-        $branch = get_post($branch_id);
-        $branch_slug = $branch ? $branch->post_name : '';
+    private function valid_branch_id($id) {
+        $id = absint($id);
+        if ($id < 1) {
+            return 0;
+        }
+        $post = get_post($id);
+        return ($post && $post->post_type === 'menu_popup_branch' && $post->post_status === 'publish') ? $id : 0;
+    }
 
-        // Build the same query as filter_menu_items but return HTML
-        $atts = array(
-            'branch' => $branch_slug,
-            'category' => $category,
-            'menu' => $menu
-        );
-
-        // Get menu items for this branch
-        ob_start();
-        $this->render_menu_content($atts);
-        $menu_html = ob_get_clean();
-
-        // Get branch info for display
-        $branch_name = $branch ? $branch->post_title : '';
-        $branch_address = get_post_meta($branch_id, '_menu_popup_branch_address', true);
-
-        wp_send_json_success(array(
-            'menu_html' => $menu_html,
-            'branch_name' => $branch_name,
-            'branch_address' => $branch_address,
-            'branch_slug' => $branch_slug
+    private function published_branches() {
+        return get_posts(array(
+            'post_type' => 'menu_popup_branch',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
         ));
+    }
+
+    /**
+     * Cities that really have a published branch, counting branches of their sub-areas.
+     */
+    private function cities_with_branches() {
+        $terms = get_terms(array(
+            'taxonomy' => 'menu_popup_branch_city',
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ));
+        if (is_wp_error($terms) || empty($terms)) {
+            return array();
+        }
+        $keep = array();
+        foreach ($terms as $term) {
+            $ids = get_posts(array(
+                'post_type' => 'menu_popup_branch',
+                'post_status' => 'publish',
+                'posts_per_page' => 1,
+                'fields' => 'ids',
+                'no_found_rows' => true,
+                'tax_query' => array(array(
+                    'taxonomy' => 'menu_popup_branch_city',
+                    'field' => 'term_id',
+                    'terms' => $term->term_id,
+                )),
+            ));
+            if (!empty($ids)) {
+                $keep[] = $term;
+            }
+        }
+        return $keep;
+    }
+
+    private function has_branch_without_city($branches) {
+        foreach ($branches as $branch) {
+            $terms = wp_get_post_terms($branch->ID, 'menu_popup_branch_city');
+            if (is_wp_error($terms) || empty($terms)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function render_branch_selection_flow($atts) {
         $force_branch_selection = get_option('menu_popup_force_branch_selection', '0') === '1';
         $enable_cities = get_option('menu_popup_enable_cities', '1') === '1';
 
-        if (isset($_GET['branch']) && !empty($_GET['branch'])) {
+        if ($this->requested_branch() > 0) {
             $this->render_menu($atts);
             return;
         }
 
-        $branches = get_posts(array(
-            'post_type' => 'menu_popup_branch',
-            'posts_per_page' => -1,
-            'orderby' => 'title',
-            'order' => 'ASC'
-        ));
+        $branches = $this->published_branches();
 
-        $cities = get_terms(array(
-            'taxonomy' => 'menu_popup_branch_city',
-            'hide_empty' => true,
-            'orderby' => 'name',
-            'order' => 'ASC'
-        ));
+        $cities = $this->cities_with_branches();
+        // A branch without a city would be unreachable behind the city step: show all branches instead
+        if ($this->has_branch_without_city($branches)) {
+            $cities = array();
+        }
 
-        if (empty($branches) && !$force_branch_selection) {
+        if (empty($branches)) {
             $this->render_menu($atts);
             return;
         }
@@ -1707,9 +1770,20 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 });
             }
 
-            if (!$('#cityStep').length || !$('#cityStep').hasClass('active')) {
-                loadBranchesForCity('');
-            }
+            // Go straight to the branch chosen on the last visit, if it still exists
+            try {
+                const saved = parseInt(localStorage.getItem('menuPopupBranch'), 10);
+                if (saved > 0) {
+                    if ($('.branch-card[data-branch-id="' + saved + '"]').length && sessionStorage.getItem('mpAutoBranch') !== String(saved)) {
+                        sessionStorage.setItem('mpAutoBranch', String(saved));
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('branch', saved);
+                        window.location.replace(url.toString());
+                    } else if (!$('.branch-card[data-branch-id="' + saved + '"]').length) {
+                        localStorage.removeItem('menuPopupBranch');
+                    }
+                }
+            } catch (e) {}
         });
         </script>
         <?php

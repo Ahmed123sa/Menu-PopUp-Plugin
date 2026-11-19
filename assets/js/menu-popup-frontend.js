@@ -199,8 +199,13 @@
           $("#branchChangeModal").show();
         });
 
-        $(".branch-change-close").on("click", function () {
+        $(document).on("click", ".branch-change-close, .branch-change-modal-close", function () {
           $("#branchChangeModal").hide();
+        });
+        $(document).on("click", ".branch-change-modal-overlay", function (e) {
+          if (e.target === this) {
+            $("#branchChangeModal").hide();
+          }
         });
         // Handle branch selection in change modal - simple redirect (like initial selection)
         $(document).on("click", ".branch-change-card", function (e) {
@@ -227,6 +232,9 @@
         $(document).on("click", "#selectDifferentBranch", function (e) {
           e.preventDefault();
           
+          // Forget the saved branch too, or the selection page would send the customer straight back
+          try { localStorage.removeItem('menuPopupBranch'); } catch (err) {}
+
           // Remove branch from URL
           const url = new URL(window.location.href);
           url.searchParams.delete('branch');
@@ -1408,6 +1416,24 @@
           menuPopupAjax.whatsappEnabled === "1"
         ) {
           this.cart = this.getCartFromStorage();
+
+          // A cart built for one branch must not follow the customer to another branch
+          try {
+            const cartBranch = localStorage.getItem("menuPopupCartBranch");
+            const nowBranch = String(parseInt(menuPopupAjax.activeBranchId || 0, 10) || 0);
+            if (cartBranch && cartBranch !== "0" && cartBranch !== nowBranch && Object.keys(this.cart).length) {
+              this.cart = {};
+              this.saveCartToStorage(this.cart);
+              const rtl = $(".menu-popup-container").hasClass("menu-rtl");
+              $("<div>")
+                .text(rtl ? "تم تفريغ السلة لأنك غيّرت الفرع" : "Your cart was emptied because you changed branch")
+                .css({ background: "#fef3c7", color: "#92400e", padding: "10px 14px", margin: "10px", borderRadius: "8px", textAlign: "center", fontSize: "14px" })
+                .prependTo(".menu-popup-container")
+                .delay(6000)
+                .fadeOut(400, function () { $(this).remove(); });
+            }
+          } catch (err) {}
+
           this.updateCartUI();
         }
       }
@@ -1540,6 +1566,9 @@
 
       saveCartToStorage(cart) {
         localStorage.setItem("menuPopupCart", JSON.stringify(cart));
+        try {
+          localStorage.setItem("menuPopupCartBranch", String(parseInt(menuPopupAjax.activeBranchId || 0, 10) || 0));
+        } catch (err) {}
       }
 
       addToCart(itemId, name, price, baseId, size) {

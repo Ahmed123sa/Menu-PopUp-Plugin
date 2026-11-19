@@ -1,11 +1,10 @@
 <?php
 /**
  * Plugin Name: Menu Pop-up
- * Plugin URI: https://yourwebsite.com/menu-popup
+ * Plugin URI: https://github.com/Ahmed123sa/Menu-PopUp-Plugin
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.6.1
+ * Version: 7.6.2
  * Author: Ahmed Ali
- * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: menu-popup
@@ -21,7 +20,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.6.1');
+define('MENU_POPUP_VERSION', '7.6.2');
 
 /**
  * Main Plugin Class

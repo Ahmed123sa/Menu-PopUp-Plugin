@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.6.1 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.6.2 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -517,6 +517,11 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.6.2**
+- The store-wide minimum order from the settings is now enforced when an order is placed (delivery and pickup)
+- Removed an unused public payment-status endpoint
+- Plugin header: plugin link points to this repository; the author link was removed
 
 **7.6.1**
 - Branches: fixed a leak where `?branch=<any post id>` printed that post's title (for example a customer name from a reservation) in the branch button; invalid or unpublished branches in the address bar are now ignored

@@ -240,6 +240,21 @@ class Menu_Popup_Order_Service {
             }
         }
 
+        // --- store-wide minimum order (delivery and pickup; a table order has no minimum) ---
+        if ($order_type !== 'dine_in') {
+            $store_min = (float) get_option('menu_popup_minimum_order', '0');
+            if ($store_min > 0 && ($subtotal + $tax) < $store_min) {
+                $symbol = (string) get_option('menu_popup_currency_symbol', '$');
+                return new WP_Error('min_order', sprintf(
+                    /* translators: 1: currency symbol, 2: minimum order, 3: current total */
+                    __('The minimum order is %1$s%2$s. Your current total is %1$s%3$s.', 'menu-popup'),
+                    $symbol,
+                    number_format($store_min, 2, '.', ''),
+                    number_format($subtotal + $tax, 2, '.', '')
+                ));
+            }
+        }
+
         $total = round($subtotal + $tax + $delivery['fee'], 2);
 
         // --- payment method -------------------------------------------------

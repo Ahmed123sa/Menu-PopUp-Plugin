@@ -61,8 +61,8 @@ class PaymentAJAX {
         add_action('wp_ajax_process_payment', [$this, 'ajax_process_payment']);
         add_action('wp_ajax_nopriv_process_payment', [$this, 'ajax_process_payment']);
         
-        add_action('wp_ajax_check_payment_status', [$this, 'ajax_check_payment_status']);
-        add_action('wp_ajax_nopriv_check_payment_status', [$this, 'ajax_check_payment_status']);
+        // check_payment_status is not registered: nothing uses it and it would hand
+        // payment references to anyone who guesses an order number.
         
         // Payment callbacks (for online gateways)
         add_action('wp_ajax_fawry_callback', [$this, 'ajax_fawry_callback']);

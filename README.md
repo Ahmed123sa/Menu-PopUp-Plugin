@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.5.1 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.6.0 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -11,6 +11,7 @@ A complete restaurant toolkit for WordPress: an interactive menu with video pop-
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
+- [Activation (license key)](#activation-license-key)
 - [Quick start](#quick-start)
 - [Shortcodes](#shortcodes)
   - [`[menu-popup]`: the menu](#menu-popup--the-menu)
@@ -112,20 +113,37 @@ git clone https://github.com/Ahmed123sa/Menu-PopUp-Plugin.git menu-popup
 
 ---
 
+## Activation (license key)
+
+Menu Pop-up runs only on a domain that has a license key from the author.
+
+1. After activating the plugin, open **Menu Pop-up → License**.
+2. Send the domain shown there to the author.
+3. Paste the license key you receive and press **Activate**.
+
+- Without a valid key the plugin stays switched off: its admin screens, shortcodes and ordering are not loaded. **No data is deleted**; everything comes back as soon as a valid key is entered.
+- One key works for one domain. `www.` is ignored, so a key for `restaurant.com` also works on `www.restaurant.com`. A subdomain needs its own key.
+- Keys are checked inside the plugin. No internet connection or external server is needed.
+- Local development sites (`localhost`, `127.0.0.1`, `*.local`, `*.test`) work without a key.
+- Updating the plugin keeps the saved key.
+
+---
+
 ## Quick start
 
-1. **Menu Pop-up → Settings → General**: set the currency, tax rate and WhatsApp number.
-2. **Menu Pop-up → Categories**: add your categories (Starters, Mains, Drinks …).
-3. **Menu Pop-up → Menus** (optional): group categories into menus and link them to branches.
-4. **Menu Pop-up → Add New Item**: add items with price, image and video.
-5. Create a page and add:
+1. Activate your license key (see above).
+2. **Menu Pop-up → Settings → General**: set the currency, tax rate and WhatsApp number.
+3. **Menu Pop-up → Categories**: add your categories (Starters, Mains, Drinks …).
+4. **Menu Pop-up → Menus** (optional): group categories into menus and link them to branches.
+5. **Menu Pop-up → Add New Item**: add items with price, image and video.
+6. Create a page and add:
 
    ```
    [menu-popup]
    ```
 
-6. To take orders, open **Settings → Ordering** and turn on online ordering.
-7. To take reservations, add tables under **Reservations** and put this shortcode on a page:
+7. To take orders, open **Settings → Ordering** and turn on online ordering.
+8. To take reservations, add tables under **Reservations** and put this shortcode on a page:
 
    ```
    [menu_popup_reservation]
@@ -420,6 +438,7 @@ A booking blocks its table for **90 minutes** by default (see [Developer hooks](
 | Accounting | Business day, daily summary, last 7 days, export, reset (password protected) |
 | Import Items | Import menu items |
 | Settings | All plugin settings, in tabs |
+| License | License status and key |
 
 ---
 
@@ -494,6 +513,9 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.6.0**
+- License activation: the plugin runs only on a domain with a valid license key
 
 **7.5.1**
 - New live floor plan: table cards, side panel with quick actions, accurate statuses, alerts

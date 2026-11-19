@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://yourwebsite.com/menu-popup
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.5.1
+ * Version: 7.6.0
  * Author: Ahmed Ali
  * Author URI: https://yourwebsite.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.5.1');
+define('MENU_POPUP_VERSION', '7.6.0');
 
 /**
  * Main Plugin Class
@@ -41,6 +41,18 @@ class Menu_Popup_Plugin
 
     public function __construct()
     {
+        require_once plugin_dir_path(__FILE__) . 'includes/class-menu-popup-license.php';
+
+        if (!Menu_Popup_License::is_active()) {
+            // Not licensed for this domain: load nothing else, keep all data
+            Menu_Popup_License::init(false);
+            register_activation_hook(__FILE__, function () {
+                update_option('menu_popup_pending_activation', '1');
+            });
+            return;
+        }
+
+        Menu_Popup_License::init(true);
         $this->includes();
         $this->init_hooks();
         $this->initialize_classes();
@@ -105,6 +117,7 @@ class Menu_Popup_Plugin
         register_activation_hook(__FILE__, array($this, 'activate'));
         register_deactivation_hook(__FILE__, array($this, 'deactivate'));
         add_action('init', array($this, 'init'));
+        add_action('init', array($this, 'maybe_finish_activation'), 99);
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
     }
 
@@ -195,6 +208,19 @@ class Menu_Popup_Plugin
             echo '<p>Menu display functionality not available.</p>';
         }
         return ob_get_clean();
+    }
+
+    /**
+     * Run the activation steps once if the plugin was activated while it had no license.
+     */
+    public function maybe_finish_activation()
+    {
+        if (get_option('menu_popup_pending_activation') !== '1') {
+            return;
+        }
+        delete_option('menu_popup_pending_activation');
+        $this->activate();
+        PaymentManager::get_instance()->create_tables();
     }
 
     public function activate()

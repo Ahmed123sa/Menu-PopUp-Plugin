@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.7.0 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.7.1 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -517,6 +517,11 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.7.1**
+- The "View Cart" button on the added-to-cart message and "Modify Order" now open the same cart panel as the cart icon (the older separate cart window is no longer shown)
+- Menu items that open a video can be opened with the keyboard
+- Remaining emoji icons (sound, microphone, WhatsApp order, table banner) were replaced by SVG icons
 
 **7.7.0**
 - Accessibility: buttons that sit on the brand colours (Show more, Add to cart, Order, Confirm and others) now pick a readable text colour automatically, so labels stay visible whatever colours are set

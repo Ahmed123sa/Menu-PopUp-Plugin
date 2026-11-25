@@ -827,7 +827,7 @@
             <div class="voice-confirmation-overlay"></div>
             <div class="voice-confirmation-content">
               <div class="voice-confirmation-header">
-                <div class="voice-confirmation-icon">🎙️</div>
+                <div class="voice-confirmation-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
                 <h3>${this.getLocalizedText("confirm_search_title")}</h3>
                 <button class="voice-confirmation-close">&times;</button>
               </div>

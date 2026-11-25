@@ -438,7 +438,7 @@
         // Create a subtle visual indicator
         if (!categoryBtn.find(".category-pronunciation-indicator").length) {
           categoryBtn.append(
-            '<div class="category-pronunciation-indicator">🔊</div>'
+            '<div class="category-pronunciation-indicator" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></div>'
           );
         }
       } else {
@@ -666,7 +666,7 @@
           z-index: 1000;
         ">
           <button class="speech-permission-btn">
-            🔊 ${this.getLocalizedText("enable_speech")}
+            <svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg> ${this.getLocalizedText("enable_speech")}
           </button>
         </div>
       `);
@@ -740,7 +740,7 @@
         item.addClass("pronouncing");
         // Create a subtle visual indicator
         if (!item.find(".pronunciation-indicator").length) {
-          $("<div class='pronunciation-indicator'>🔊</div>").appendTo(item);
+          $(`<div class="pronunciation-indicator" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></div>`).appendTo(item);
         }
       } else {
         item.removeClass("pronouncing");

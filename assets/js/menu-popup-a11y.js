@@ -72,8 +72,26 @@
     }
   }
 
+  // Menu items that open a video behave like buttons: reachable and usable with the keyboard
+  function enhanceItems(root) {
+    var list = [];
+    if (root.matches && root.matches(".menu-item[data-video]")) list.push(root);
+    if (root.querySelectorAll) {
+      Array.prototype.push.apply(list, root.querySelectorAll(".menu-item[data-video]"));
+    }
+    list.forEach(function (el) {
+      if (el.getAttribute("data-video") && !el.hasAttribute("tabindex")) {
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", "button");
+        var title = el.getAttribute("data-title");
+        if (title) el.setAttribute("aria-label", title);
+      }
+    });
+  }
+
   function check(root) {
     if (!root || root.nodeType !== 1) return;
+    enhanceItems(root);
     if (root.matches(DIALOGS)) sync(root);
     var inner = root.querySelectorAll ? root.querySelectorAll(DIALOGS) : [];
     for (var i = 0; i < inner.length; i++) sync(inner[i]);
@@ -92,6 +110,7 @@
   }
 
   function init() {
+    enhanceItems(document.body);
     if (!window.MutationObserver) return;
     var mo = new MutationObserver(function (list) {
       list.forEach(function (m) {
@@ -119,7 +138,7 @@
   document.addEventListener("keydown", function (e) {
     var t = e.target;
     // Activate custom buttons with Enter / Space
-    if ((e.key === "Enter" || e.key === " ") && t && t.matches && t.matches(".branch-card, .cart-toggle-icon")) {
+    if ((e.key === "Enter" || e.key === " ") && t && t.matches && t.matches(".branch-card, .cart-toggle-icon, .menu-item[data-video]")) {
       e.preventDefault();
       t.click();
       return;

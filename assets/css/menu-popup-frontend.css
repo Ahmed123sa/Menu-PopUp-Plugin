@@ -4803,3 +4803,17 @@
     scroll-behavior: auto !important;
   }
 }
+.speech-toggle-icon,
+.voice-confirmation-icon,
+.pronunciation-indicator,
+.category-pronunciation-indicator,
+.mp-table-banner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.menu-item[data-video][role="button"] {
+  cursor: pointer;
+}

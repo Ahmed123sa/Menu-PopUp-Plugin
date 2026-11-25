@@ -878,7 +878,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
                             <?php if (get_option('menu_popup_whatsapp_enabled', '0') == '1'): ?>
                                 <button class="action-btn order-whatsapp-btn <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'requires-size-selection' : ''; ?>" data-name="<?php echo esc_attr($selected_name_ajax); ?>" data-price="<?php echo esc_attr($first_price_ajax); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>" <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'style="display: none;"' : ''; ?>>
-                                    <span class="whatsapp-icon">📱</span> Order Now
+                                    <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> Order Now
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -1002,7 +1002,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
                                         <?php if (get_option('menu_popup_whatsapp_enabled', '0') == '1'): ?>
                                             <button class="action-btn order-whatsapp-btn" data-name="<?php echo esc_attr($selected_name); ?>" data-price="<?php echo esc_attr($first_price ?? $price); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>">
-                                                <span class="whatsapp-icon">📱</span> <?php echo esc_html($selected_order_now); ?>
+                                                <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> <?php echo esc_html($selected_order_now); ?>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -1044,7 +1044,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                                     <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php _e('Add to Cart', 'menu-popup'); ?>
                                 </button>
                                 <button class="action-btn video-order-whatsapp-btn" style="display: none;">
-                                    <span class="whatsapp-icon">📱</span> <?php _e('Order Now', 'menu-popup'); ?>
+                                    <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> <?php _e('Order Now', 'menu-popup'); ?>
                                 </button>
                             </div>
                         </div>
@@ -1409,7 +1409,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
                             <?php if (get_option('menu_popup_whatsapp_enabled', '0') == '1'): ?>
                                 <button class="action-btn order-whatsapp-btn <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'requires-size-selection' : ''; ?>" data-name="<?php echo esc_attr($selected_name_ajax); ?>" data-price="<?php echo esc_attr($first_price_ajax); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>" <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'style="display: none;"' : ''; ?>>
-                                    <span class="whatsapp-icon">📱</span> <?php echo esc_html($selected_order_now_ajax); ?>
+                                    <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> <?php echo esc_html($selected_order_now_ajax); ?>
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -2243,7 +2243,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                                         <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php _e('Add to Cart', 'menu-popup'); ?>
                                     </button>
                                     <button class="action-btn video-order-whatsapp-btn" style="display: none;">
-                                        <span class="whatsapp-icon">📱</span> <?php _e('Order Now', 'menu-popup'); ?>
+                                        <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> <?php _e('Order Now', 'menu-popup'); ?>
                                     </button>
                                 </div>
                             </div>
@@ -2376,7 +2376,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
                         <?php if (get_option('menu_popup_whatsapp_enabled', '0') == '1'): ?>
                             <button class="action-btn order-whatsapp-btn" data-name="<?php echo esc_attr($selected_name); ?>" data-price="<?php echo esc_attr($first_price ?? $price); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>">
-                                <span class="whatsapp-icon">📱</span> <?php echo esc_html($selected_order_now); ?>
+                                <span class="whatsapp-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span> <?php echo esc_html($selected_order_now); ?>
                             </button>
                         <?php endif; ?>
                     </div>

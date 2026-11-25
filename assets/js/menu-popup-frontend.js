@@ -14,6 +14,9 @@
   const MP_ICONS = {
     store: MP_SVG('<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>'),
     truck: MP_SVG('<path d="M1 6h13v11H1z"/><path d="M14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>'),
+    speakerOn: '<svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+    speakerOff: '<svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>',
+    utensils: MP_SVG('<path d="M6 3v8a2 2 0 0 0 2 2v8M10 3v8M6 7h4"/><path d="M17 3c-2 1.5-3 4-3 7h3v11"/>'),
     clipboard: MP_SVG('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>'),
   };
 
@@ -1946,8 +1949,8 @@
           });
 
           notification.find(".cart-notification-view").on("click", () => {
-            this.showCartModal();
             this.hideCartNotification();
+            this.showCartFlyout();
           });
         }
 
@@ -2386,7 +2389,7 @@
             const tableLabel = $("<div></div>").text(menuPopupAjax.table.name).html();
             orderTypeSection =
               '<input type="radio" name="confirmation_order_type" value="dine_in" checked style="display:none">' +
-              '<div class="mp-table-banner">🍽️ Table ' + tableLabel + "</div>";
+              '<div class="mp-table-banner"><span aria-hidden="true">' + MP_ICONS.utensils + "</span> Table " + tableLabel + "</div>";
           } else if (menuPopupAjax.deliveryEnabled === "1") {
             orderTypeSection = `
               <!-- Order Type Selection -->
@@ -2491,7 +2494,7 @@
           // Bind confirmation modal events
           confirmModal.find(".confirmation-cancel").on("click", () => {
             confirmModal.removeClass("active");
-            this.showCartModal(); // Go back to cart modal
+            this.showCartFlyout(); // Go back to the cart
           });
 
           confirmModal.find(".confirmation-proceed").on("click", () => {
@@ -3625,7 +3628,7 @@
           const toggleContainer = $(`
         <div class="speech-toggle-container">
           <button class="speech-toggle-btn" title="Toggle speech synthesis" aria-label="Toggle speech synthesis">
-            <span class="speech-toggle-icon">🔊</span>
+            <span class="speech-toggle-icon" aria-hidden="true">${MP_ICONS.speakerOn}</span>
           </button>
         </div>
       `);
@@ -3686,10 +3689,10 @@
         const text = toggleBtn.find(".speech-toggle-text");
 
         if (isEnabled === false) {
-          icon.text("🔇");
+          icon.html(MP_ICONS.speakerOff);
           if (text.length > 0) text.text("Pronounce Off");
         } else {
-          icon.text("🔊");
+          icon.html(MP_ICONS.speakerOn);
           if (text.length > 0) text.text("Pronounce On");
         }
       }

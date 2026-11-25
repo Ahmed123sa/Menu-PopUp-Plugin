@@ -4817,3 +4817,22 @@
 .menu-item[data-video][role="button"] {
   cursor: pointer;
 }
+
+/* Cart panel text uses the cart text colour so it always matches the cart background */
+.cart-flyout-header h4,
+.cart-total-label {
+  color: var(--menu-cart-text, var(--menu-text));
+}
+
+.cart-items-count {
+  color: var(--menu-cart-text, var(--menu-text));
+  opacity: 0.85;
+}
+
+.cart-total-amount {
+  font-size: 1.2rem;
+}
+
+.cart-clear-all {
+  color: #ff7b88;
+}

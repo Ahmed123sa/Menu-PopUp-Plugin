@@ -35,6 +35,15 @@
     );
   }
 
+  // Open state by the element's own switch (not by opacity, which is mid-transition when we look)
+  function isOpen(el) {
+    if (el.classList.contains("cart-flyout")) return el.classList.contains("visible");
+    if (el.id === "globalVideoModal" || el.id === "branchChangeModal") {
+      return el.style.display !== "none" && el.getClientRects().length > 0;
+    }
+    return el.classList.contains("active");
+  }
+
   function onOpen(el) {
     if (openStack.some(function (d) { return d.el === el; })) return;
     var entry = { el: el, opener: document.activeElement };
@@ -64,11 +73,12 @@
   }
 
   function sync(el) {
-    if (isVisible(el)) onOpen(el);
+    var open = isOpen(el);
+    if (open) onOpen(el);
     else onClose(el);
     if (el.classList.contains("cart-flyout")) {
       var icon = document.querySelector(".cart-toggle-icon");
-      if (icon) icon.setAttribute("aria-expanded", isVisible(el) ? "true" : "false");
+      if (icon) icon.setAttribute("aria-expanded", open ? "true" : "false");
     }
   }
 

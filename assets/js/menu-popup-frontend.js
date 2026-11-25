@@ -6,6 +6,17 @@
 (function ($) {
   "use strict";
 
+  // Inline SVG icons (replace emoji in the interface)
+  const MP_SVG = (inner) =>
+    '<svg class="mp-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+    inner +
+    "</svg>";
+  const MP_ICONS = {
+    store: MP_SVG('<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-6h4v6"/>'),
+    truck: MP_SVG('<path d="M1 6h13v11H1z"/><path d="M14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>'),
+    clipboard: MP_SVG('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>'),
+  };
+
   try {
     class MenuPopup {
       constructor() {
@@ -894,7 +905,7 @@
             <div class="gallery-fullview-overlay"></div>
             <div class="gallery-fullview-container">
               <img class="gallery-fullview-image" src="" alt="" />
-              <button class="gallery-fullview-close">&times;</button>
+              <button type="button" class="gallery-fullview-close" aria-label="Close">&times;</button>
               <button class="gallery-nav gallery-nav-prev">&larr;</button>
               <button class="gallery-nav gallery-nav-next">&rarr;</button>
               <div class="gallery-fullview-counter"></div>
@@ -1827,14 +1838,14 @@
           // Create cart counter with optimized HTML structure
           const cartHtml = `
             <div id="cart-toggle-btn" class="cart-toggle-btn">
-              <div class="cart-toggle-icon">
-                <span class="cart-toggle-count">${totalItems}</span>
+              <div class="cart-toggle-icon" role="button" tabindex="0" aria-label="View your order" aria-haspopup="dialog" aria-expanded="false">
+                <span class="cart-toggle-count" aria-live="polite">${totalItems}</span>
               </div>
-              <div class="cart-flyout">
+              <div class="cart-flyout" role="dialog" aria-label="Your Order">
                 <div class="cart-flyout-header">
                   <h4>Your Order</h4>
                   <span class="cart-items-count">${totalItems} items</span>
-                  <button class="cart-flyout-close">&times;</button>
+                  <button type="button" class="cart-flyout-close" aria-label="Close">&times;</button>
                 </div>
                 <div class="cart-flyout-body" id="cart-flyout-items"></div>
                 <div class="cart-flyout-footer">
@@ -1920,7 +1931,7 @@
             <div id="cart-notification" class="cart-notification">
               <div class="cart-notification-content">
                 <span class="cart-notification-text">Item added to cart!</span>
-                <button class="cart-notification-close">&times;</button>
+                <button type="button" class="cart-notification-close" aria-label="Close">&times;</button>
                 <button class="cart-notification-view">View Cart</button>
               </div>
             </div>
@@ -1970,13 +1981,13 @@
         if (notification.length > 0) {
           const text = `Cart: ${itemCount} item${
             itemCount !== 1 ? "s" : ""
-          } ($${totalPrice})`;
+          } (${menuPopupAjax.currencySymbol}${totalPrice})`;
           notification
             .find(".cart-notification-text")
             .text(`${itemCount} item${itemCount !== 1 ? "s" : ""} in cart`);
           notification
             .find(".cart-notification-view")
-            .text(`View Cart ($${totalPrice})`);
+            .text(`View Cart (${menuPopupAjax.currencySymbol}${totalPrice})`);
         }
       }
 
@@ -1984,17 +1995,17 @@
         let cartModal = $("#cart-modal");
         if (cartModal.length === 0) {
           cartModal = $(`
-            <div id="cart-modal" class="cart-modal">
+            <div id="cart-modal" class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="cart-modal-title">
               <div class="cart-modal-overlay"></div>
               <div class="cart-modal-content">
                 <div class="cart-modal-header">
-                  <h3>Your Order</h3>
-                  <button class="cart-modal-close">&times;</button>
+                  <h3 id="cart-modal-title">Your Order</h3>
+                  <button type="button" class="cart-modal-close" aria-label="Close">&times;</button>
                 </div>
                 <div class="cart-modal-body">
                   <div id="cart-items"></div>
                   <div class="cart-total">
-                    <strong>Total: <span id="cart-total-price">$0.00</span></strong>
+                    <strong>Total: <span id="cart-total-price">${menuPopupAjax.currencySymbol}0.00</span></strong>
                   </div>
                   <div id="payment-methods-section" class="payment-methods-section">
                     <h4>Payment Method</h4>
@@ -2091,7 +2102,7 @@
             <div class="cart-item" data-id="${itemId}">
               <div class="cart-item-info">
                 <span class="cart-item-name">${item.name}</span>
-                <span class="cart-item-price">$${item.price.toFixed(
+                <span class="cart-item-price">${menuPopupAjax.currencySymbol}${item.price.toFixed(
                   2
                 )} each</span>
               </div>
@@ -2101,7 +2112,7 @@
                 <button class="cart-quantity-inc">+</button>
                 <button class="cart-item-remove">×</button>
               </div>
-              <div class="cart-item-total">$${itemTotal.toFixed(2)}</div>
+              <div class="cart-item-total">${menuPopupAjax.currencySymbol}${itemTotal.toFixed(2)}</div>
             </div>
           `);
 
@@ -2135,7 +2146,7 @@
           cartItems.append(itemEl);
         });
 
-        $("#cart-total-price").text("$" + total.toFixed(2));
+        $("#cart-total-price").text(menuPopupAjax.currencySymbol + total.toFixed(2));
       }
 
       clearCart() {
@@ -2385,13 +2396,13 @@
                   <label class="order-type-option-confirmation">
                     <input type="radio" name="confirmation_order_type" value="pickup" checked>
                     <span class="option-content-confirmation">
-                      <span class="order-icon-confirmation">🏪</span> Pickup
+                      <span class="order-icon-confirmation" aria-hidden="true">${MP_ICONS.store}</span> Pickup
                     </span>
                   </label>
                   <label class="order-type-option-confirmation">
                     <input type="radio" name="confirmation_order_type" value="delivery">
                     <span class="option-content-confirmation">
-                      <span class="order-icon-confirmation">🚚</span> Delivery
+                      <span class="order-icon-confirmation" aria-hidden="true">${MP_ICONS.truck}</span> Delivery
                     </span>
                   </label>
                 </div>
@@ -2402,27 +2413,27 @@
           }
           
           confirmModal = $(`
-            <div id="order-confirmation-modal" class="order-confirmation-modal">
+            <div id="order-confirmation-modal" class="order-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="order-confirmation-title">
               <div class="order-confirmation-overlay"></div>
               <div class="order-confirmation-content">
                 <div class="order-confirmation-header">
-                  <span class="order-confirmation-icon">📋</span>
-                  <h3>Confirm Your Order</h3>
+                  <span class="order-confirmation-icon" aria-hidden="true">${MP_ICONS.clipboard}</span>
+                  <h3 id="order-confirmation-title">Confirm Your Order</h3>
                 </div>
                 <div class="order-confirmation-body">
                   <div id="confirmation-items"></div>
                   <div class="confirmation-summary">
                     <div class="confirmation-subtotal">
                       <span>Subtotal:</span>
-                      <span id="confirmation-subtotal">$0.00</span>
+                      <span id="confirmation-subtotal">${menuPopupAjax.currencySymbol}0.00</span>
                     </div>
                     <div class="confirmation-tax">
                       <span>Tax (${menuPopupAjax.taxRate || 0}%):</span>
-                      <span id="confirmation-tax">$0.00</span>
+                      <span id="confirmation-tax">${menuPopupAjax.currencySymbol}0.00</span>
                     </div>
                     <div class="confirmation-total">
                       <span><strong>Total:</strong></span>
-                      <span id="confirmation-total"><strong>$0.00</strong></span>
+                      <span id="confirmation-total"><strong>${menuPopupAjax.currencySymbol}0.00</strong></span>
                     </div>
                   </div>
                   <!-- Customer Information Fields -->
@@ -2436,7 +2447,7 @@
                   <!-- Delivery Order Indicator -->
                   <div class="delivery-order-indicator" id="delivery-order-indicator" style="display: none;">
                     <div class="delivery-indicator-content">
-                      <span class="delivery-icon">🚚</span>
+                      <span class="delivery-icon" aria-hidden="true">${MP_ICONS.truck}</span>
                       <span class="delivery-text">This is a delivery order</span>
                     </div>
                   </div>
@@ -2683,31 +2694,31 @@
         let reviewModal = $("#order-review-modal");
         if (reviewModal.length === 0) {
           reviewModal = $(`
-            <div id="order-review-modal" class="order-review-modal">
+            <div id="order-review-modal" class="order-review-modal" role="dialog" aria-modal="true" aria-labelledby="order-review-title">
               <div class="order-review-overlay"></div>
               <div class="order-review-content">
                 <div class="order-review-header">
-                  <span class="order-review-icon">📋</span>
-                  <h3>Review Your Order</h3>
+                  <span class="order-review-icon" aria-hidden="true">${MP_ICONS.clipboard}</span>
+                  <h3 id="order-review-title">Review Your Order</h3>
                 </div>
                 <div class="order-review-body">
                   <div id="review-order-items"></div>
                   <div class="review-order-summary">
                     <div class="review-subtotal">
                       <span>Subtotal:</span>
-                      <span id="review-subtotal">$0.00</span>
+                      <span id="review-subtotal">${menuPopupAjax.currencySymbol}0.00</span>
                     </div>
                     <div class="review-tax">
                       <span>Tax (${menuPopupAjax.taxRate || 0}%):</span>
-                      <span id="review-tax">$0.00</span>
+                      <span id="review-tax">${menuPopupAjax.currencySymbol}0.00</span>
                     </div>
                     <div class="review-delivery-fee" id="review-delivery-fee-row" style="display: none;">
                       <span>Delivery Fee:</span>
-                      <span id="review-delivery-fee">$0.00</span>
+                      <span id="review-delivery-fee">${menuPopupAjax.currencySymbol}0.00</span>
                     </div>
                     <div class="review-total">
                       <span><strong>Total:</strong></span>
-                      <span id="review-total"><strong>$0.00</strong></span>
+                      <span id="review-total"><strong>${menuPopupAjax.currencySymbol}0.00</strong></span>
                     </div>
                   </div>
                 </div>
@@ -2882,12 +2893,12 @@
         if (orderForm.length === 0) {
           const fields = this.buildOrderFormFields();
           orderForm = $(`
-            <div id="order-form-modal" class="order-form-modal">
+            <div id="order-form-modal" class="order-form-modal" role="dialog" aria-modal="true" aria-labelledby="order-form-title">
               <div class="order-form-overlay"></div>
               <div class="order-form-content">
                 <div class="order-form-header">
-                  <h3>Complete Your Order</h3>
-                  <button class="order-form-close">&times;</button>
+                  <h3 id="order-form-title">Complete Your Order</h3>
+                  <button type="button" class="order-form-close" aria-label="Close">&times;</button>
                 </div>
                 <form id="order-form" class="order-form">
                   ${fields}
@@ -2978,12 +2989,12 @@
           fields +=
             '<input type="radio" name="order_type" value="pickup" checked>';
           fields +=
-            '<span class="option-content"><span class="order-icon">🏪</span> Pickup</span>';
+            '<span class="option-content"><span class="order-icon" aria-hidden="true">' + MP_ICONS.store + '</span> Pickup</span>';
           fields += "</label>";
           fields += '<label class="order-type-option">';
           fields += '<input type="radio" name="order_type" value="delivery">';
           fields +=
-            '<span class="option-content"><span class="order-icon">🚚</span> Delivery</span>';
+            '<span class="option-content"><span class="order-icon" aria-hidden="true">' + MP_ICONS.truck + '</span> Delivery</span>';
           fields += "</label>";
           fields += "</div>";
           fields += "</div>";
@@ -3158,7 +3169,7 @@
         if (fullCart) {
           message += "Order Details:\n";
           Object.entries(this.cart).forEach(([itemId, item]) => {
-            message += `• ${item.name} x${item.quantity} ($${item.price.toFixed(
+            message += `• ${item.name} x${item.quantity} (${menuPopupAjax.currencySymbol}${item.price.toFixed(
               2
             )} each)\n`;
           });
@@ -3166,11 +3177,11 @@
             (sum, item) => sum + item.price * item.quantity,
             0
           );
-          message += `\n💰 Total: $${
+          message += `\n💰 Total: ${menuPopupAjax.currencySymbol}${
             menuPopupAjax.currencySymbol
           }${total.toFixed(2)}`;
         } else {
-          message += `Order: ${name}\nPrice: $${menuPopupAjax.currencySymbol}${price}`;
+          message += `Order: ${name}\nPrice: ${menuPopupAjax.currencySymbol}${price}`;
         }
 
         const whatsappUrl = `https://wa.me/${menuPopupAjax.restaurantWhatsapp.replace(
@@ -3289,7 +3300,7 @@
               </div>
               <div class="mini-cart-items" id="mini-cart-items"></div>
               <div class="mini-cart-footer">
-                <div class="mini-cart-total">Total: <span id="mini-cart-total-price">$0.00</span></div>
+                <div class="mini-cart-total">Total: <span id="mini-cart-total-price">${menuPopupAjax.currencySymbol}0.00</span></div>
                 <button class="mini-cart-view-btn">View Full Cart</button>
               </div>
             </div>
@@ -3345,7 +3356,7 @@
         }
 
         miniCartTotal.text(
-          `$${menuPopupAjax.currencySymbol}${total.toFixed(2)}`
+          `${menuPopupAjax.currencySymbol}${total.toFixed(2)}`
         );
       }
 
@@ -3374,7 +3385,7 @@
           }s">
               <div class="cart-item-info">
                 <span class="cart-item-name">${item.name}</span>
-                <span class="cart-item-price">$${item.price.toFixed(
+                <span class="cart-item-price">${menuPopupAjax.currencySymbol}${item.price.toFixed(
                   2
                 )} each</span>
               </div>
@@ -3384,7 +3395,7 @@
                 <button class="cart-quantity-inc">+</button>
                 <button class="cart-item-remove">×</button>
               </div>
-              <div class="cart-item-total">$${itemTotal.toFixed(2)}</div>
+              <div class="cart-item-total">${menuPopupAjax.currencySymbol}${itemTotal.toFixed(2)}</div>
             </div>
           `);
 

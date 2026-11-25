@@ -33,9 +33,92 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         }
     }
 
+    private static function mp_hex_rgb($c) {
+        $c = trim((string) $c);
+        if (!preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $c, $m)) {
+            return null;
+        }
+        $h = $m[1];
+        if (strlen($h) === 3) {
+            $h = $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+        }
+        return array(hexdec(substr($h, 0, 2)), hexdec(substr($h, 2, 2)), hexdec(substr($h, 4, 2)));
+    }
+
+    private static function mp_luminance($rgb) {
+        $out = array();
+        foreach ($rgb as $v) {
+            $v = $v / 255;
+            $out[] = ($v <= 0.03928) ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * $out[0] + 0.7152 * $out[1] + 0.0722 * $out[2];
+    }
+
+    private static function mp_ratio($a, $b) {
+        $la = self::mp_luminance($a);
+        $lb = self::mp_luminance($b);
+        if ($la < $lb) {
+            $t = $la; $la = $lb; $lb = $t;
+        }
+        return ($la + 0.05) / ($lb + 0.05);
+    }
+
+    /**
+     * Pick the readable text colour (dark or white) for one or more background colours.
+     * Returns an empty string when a colour is not a plain hex value.
+     */
+    private static function mp_contrast_text($backgrounds) {
+        $rgbs = array();
+        foreach ((array) $backgrounds as $bg) {
+            $rgb = self::mp_hex_rgb($bg);
+            if ($rgb === null) {
+                return '';
+            }
+            $rgbs[] = $rgb;
+        }
+        $best = '';
+        $best_score = -1;
+        foreach (array('#111111', '#ffffff') as $candidate) {
+            $c = self::mp_hex_rgb($candidate);
+            $min = 21;
+            foreach ($rgbs as $rgb) {
+                $min = min($min, self::mp_ratio($c, $rgb));
+            }
+            if ($min > $best_score) {
+                $best_score = $min;
+                $best = $candidate;
+            }
+        }
+        return $best;
+    }
+
+    /**
+     * CSS custom properties holding readable text colours for buttons that sit on the
+     * primary / accent colours, so button labels never disappear into their background.
+     */
+    public static function contrast_vars() {
+        $primary = get_option('menu_popup_primary_color', '#A855F7');
+        $accent = get_option('menu_popup_accent_color', '#F59E0B');
+        $out = '';
+        $on_primary = self::mp_contrast_text(array($primary));
+        $on_accent = self::mp_contrast_text(array($accent));
+        $on_gradient = self::mp_contrast_text(array($primary, $accent));
+        if ($on_primary !== '') {
+            $out .= '--menu-on-primary: ' . $on_primary . '; ';
+        }
+        if ($on_accent !== '') {
+            $out .= '--menu-on-accent: ' . $on_accent . '; ';
+        }
+        if ($on_gradient !== '') {
+            $out .= '--menu-on-gradient: ' . $on_gradient . '; ';
+        }
+        return $out;
+    }
+
     public function frontend_enqueue_scripts() {
         wp_enqueue_style('menu-popup-frontend', MENU_POPUP_PLUGIN_URL . 'assets/css/menu-popup-frontend.css', array(), $this->version);
         wp_enqueue_script('menu-popup-frontend', MENU_POPUP_PLUGIN_URL . 'assets/js/menu-popup-frontend.js', array('jquery'), $this->version, true);
+        wp_enqueue_script('menu-popup-a11y', MENU_POPUP_PLUGIN_URL . 'assets/js/menu-popup-a11y.js', array('jquery'), $this->version, true);
         
         // Localize script with payment settings for menu-popup-frontend.js
         // Note: Same settings are also localized to payment-frontend.js
@@ -543,6 +626,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 --menu-bg: <?php echo $background_color; ?>;
                 --menu-text: <?php echo $text_color; ?>;
                 --menu-primary: <?php echo $primary_color; ?>;
+                <?php echo esc_html(self::contrast_vars()); ?>
                 --menu-secondary: <?php echo $secondary_color; ?>;
                 --menu-accent: <?php echo $accent_color; ?>;
 
@@ -592,9 +676,9 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         </style>
         <div class="menu-popup-container <?php echo $css_class; ?> layout-<?php echo esc_attr($layout_type); ?> <?php echo get_option('menu_popup_enable_videos') == '1' ? 'videos-enabled' : 'videos-disabled'; ?>" dir="<?php echo $direction; ?>" data-layout="<?php echo esc_attr($layout_type); ?>" data-menu="<?php echo esc_attr($atts['menu']); ?>">
             <!-- Language Switcher -->
-            <div class="language-switcher">
-                <a href="<?php echo esc_url(add_query_arg('lang', 'en')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'en' ? 'active' : ''; ?>">EN</a>
-                <a href="<?php echo esc_url(add_query_arg('lang', 'ar')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'ar' ? 'active' : ''; ?>">العربية</a>
+            <div class="language-switcher" role="group" aria-label="<?php esc_attr_e('Language', 'menu-popup'); ?>">
+                <a href="<?php echo esc_url(add_query_arg('lang', 'en')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'en' ? 'active' : ''; ?>" lang="en" hreflang="en"<?php echo ($current_lang ?? 'en') === 'en' ? ' aria-current="true"' : ''; ?>>EN</a>
+                <a href="<?php echo esc_url(add_query_arg('lang', 'ar')); ?>" class="language-btn <?php echo ($current_lang ?? 'en') === 'ar' ? 'active' : ''; ?>" lang="ar" hreflang="ar"<?php echo ($current_lang ?? 'en') === 'ar' ? ' aria-current="true"' : ''; ?>>العربية</a>
             </div>
             <!-- Branch Selector -->
             <?php $current_branch_id = $this->requested_branch(); ?>
@@ -618,8 +702,8 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             <?php if ($atts['show_search'] === 'true'): ?>
             <section class="menu-search">
                 <div class="search-container">
-                    <input type="text" id="menu-search-input" placeholder="<?php _e('Search menu items...', 'menu-popup'); ?>" class="search-input">
-                    <button class="search-clear" id="search-clear" style="display: none;">×</button>
+                    <input type="text" id="menu-search-input" placeholder="<?php esc_attr_e('Search menu items...', 'menu-popup'); ?>" aria-label="<?php esc_attr_e('Search menu items', 'menu-popup'); ?>" class="search-input">
+                    <button type="button" class="search-clear" id="search-clear" aria-label="<?php esc_attr_e('Clear search', 'menu-popup'); ?>" style="display: none;">×</button>
                     <!-- Voice Search Button Placeholder -->
                     <div class="search-buttons">
                         <!-- Voice search and speech toggle buttons will be inserted here -->
@@ -788,7 +872,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                         <div class="menu-item-actions <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'has-variations' : ''; ?>">
                             <?php if (get_option('menu_popup_ordering_enabled', '0') == '1'): ?>
                                 <button class="action-btn add-to-cart-btn <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'requires-size-selection' : ''; ?>" data-item-id="<?php echo esc_attr($item->ID); ?>" data-name="<?php echo esc_attr($selected_name_ajax); ?>" data-price="<?php echo esc_attr($first_price_ajax); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>" <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'style="display: none;"' : ''; ?>>
-                                    <span class="cart-icon">🛒</span> Add to Cart
+                                    <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> Add to Cart
                                 </button>
                             <?php endif; ?>
 
@@ -912,7 +996,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                                     <div class="menu-item-actions">
                                         <?php if (get_option('menu_popup_ordering_enabled', '0') == '1'): ?>
                                             <button class="action-btn add-to-cart-btn" data-item-id="<?php echo esc_attr($item->ID); ?>" data-name="<?php echo esc_attr($selected_name); ?>" data-price="<?php echo esc_attr($first_price ?? $price); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>">
-                                                <span class="cart-icon">🛒</span> <?php echo esc_html($selected_add_to_cart); ?>
+                                                <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php echo esc_html($selected_add_to_cart); ?>
                                             </button>
                                         <?php endif; ?>
 
@@ -940,14 +1024,14 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             <!-- Video Modal -->
             <?php if (!$video_modal_rendered): ?>
                 <?php $video_modal_rendered = true; ?>
-                <div class="video-modal-overlay" id="globalVideoModal" style="display: none;">
+                <div class="video-modal-overlay" id="globalVideoModal" role="dialog" aria-modal="true" aria-labelledby="mpVideoModalTitle" style="display: none;">
                 <div class="video-modal-container">
                     <div class="video-modal-content">
                         <iframe allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title=""></iframe>
                     </div>
                     <div class="video-modal-gallery-section">
                         <div class="video-modal-header">
-                            <h3 class="video-modal-title"></h3>
+                            <h3 class="video-modal-title" id="mpVideoModalTitle"></h3>
                             <p class="video-modal-description"></p>
                             <?php if (get_option('menu_popup_show_price_modal', '1') == '1'): ?>
                                 <div class="video-modal-variations" style="display: none;"></div>
@@ -957,7 +1041,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                             <!-- Order/Cart Actions in Modal -->
                             <div class="video-modal-actions" style="display: none;">
                                 <button class="action-btn video-add-to-cart-btn" style="display: none;">
-                                    <span class="cart-icon">🛒</span> <?php _e('Add to Cart', 'menu-popup'); ?>
+                                    <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php _e('Add to Cart', 'menu-popup'); ?>
                                 </button>
                                 <button class="action-btn video-order-whatsapp-btn" style="display: none;">
                                     <span class="whatsapp-icon">📱</span> <?php _e('Order Now', 'menu-popup'); ?>
@@ -966,17 +1050,17 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                         </div>
                         <div class="video-modal-gallery"></div>
                     </div>
-                    <button class="video-modal-close" title="Close Video">×</button>
+                    <button type="button" class="video-modal-close" title="Close Video" aria-label="Close video">×</button>
                 </div>
             </div>
             <?php endif; ?>
 
             <!-- Branch Change Modal -->
-            <div class="branch-change-modal-overlay" id="branchChangeModal" style="display: none;">
+            <div class="branch-change-modal-overlay" id="branchChangeModal" role="dialog" aria-modal="true" aria-labelledby="mpBranchModalTitle" style="display: none;">
                 <div class="branch-change-modal">
                     <div class="branch-change-modal-header">
-                        <h3 class="branch-change-modal-title"><?php _e('Change Your Location', 'menu-popup'); ?></h3>
-                        <button class="branch-change-modal-close" title="Close">&times;</button>
+                        <h3 class="branch-change-modal-title" id="mpBranchModalTitle"><?php _e('Change Your Location', 'menu-popup'); ?></h3>
+                        <button type="button" class="branch-change-modal-close" title="Close" aria-label="Close">&times;</button>
                     </div>
                     <div class="branch-change-modal-body" id="branchChangeGrid">
                         <!-- Branches loaded via AJAX -->
@@ -1319,7 +1403,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                         <div class="menu-item-actions <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'has-variations' : ''; ?>">
                             <?php if (get_option('menu_popup_ordering_enabled', '0') == '1'): ?>
                                 <button class="action-btn add-to-cart-btn <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'requires-size-selection' : ''; ?>" data-item-id="<?php echo esc_attr($item->ID); ?>" data-name="<?php echo esc_attr($selected_name_ajax); ?>" data-price="<?php echo esc_attr($first_price_ajax); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>" <?php echo (!empty($sizes_variations) && is_array($sizes_variations) && count($sizes_variations) > 1) ? 'style="display: none;"' : ''; ?>>
-                                    <span class="cart-icon">🛒</span> <?php echo esc_html($selected_add_to_cart_ajax); ?>
+                                    <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php echo esc_html($selected_add_to_cart_ajax); ?>
                                 </button>
                             <?php endif; ?>
 
@@ -1378,7 +1462,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 $hours = get_post_meta($branch->ID, '_menu_popup_branch_hours', true);
                 $branch_slug = $branch->post_name;
     ?>
-    <div class="location-card branch-card"
+    <div class="location-card branch-card" role="button" tabindex="0"
          data-branch-id="<?php echo esc_attr($branch->ID); ?>"
          data-branch-slug="<?php echo esc_attr($branch_slug); ?>"
          data-city-slug="<?php echo esc_attr($city_slug); ?>">
@@ -1515,6 +1599,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 --menu-bg: <?php echo $background_color; ?>;
                 --menu-text: <?php echo $text_color; ?>;
                 --menu-primary: <?php echo $primary_color; ?>;
+                <?php echo esc_html(self::contrast_vars()); ?>
                 --menu-secondary: <?php echo $secondary_color; ?>;
             }
 
@@ -1677,7 +1762,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                                     $hours = get_post_meta($branch->ID, '_menu_popup_branch_hours', true);
                                     $branch_slug = $branch->post_name;
                                     ?>
-                                    <div class="location-card branch-card"
+                                    <div class="location-card branch-card" role="button" tabindex="0"
                                          data-branch-id="<?php echo esc_attr($branch->ID); ?>"
                                          data-branch-slug="<?php echo esc_attr($branch_slug); ?>"
                                          data-city-slug="<?php echo esc_attr($city_slug); ?>">
@@ -1905,6 +1990,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                 --menu-bg: <?php echo $background_color; ?>;
                 --menu-text: <?php echo $text_color; ?>;
                 --menu-primary: <?php echo $primary_color; ?>;
+                <?php echo esc_html(self::contrast_vars()); ?>
                 --menu-secondary: <?php echo $secondary_color; ?>;
                 --menu-accent: <?php echo $accent_color; ?>;
                 --menu-cart-bg: <?php echo $cart_background_color; ?>;
@@ -2138,14 +2224,14 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
             <?php if (!$video_modal_rendered): ?>
                 <?php $video_modal_rendered = true; ?>
-                <div class="video-modal-overlay" id="globalVideoModal" style="display: none;">
+                <div class="video-modal-overlay" id="globalVideoModal" role="dialog" aria-modal="true" aria-labelledby="mpVideoModalTitle" style="display: none;">
                     <div class="video-modal-container">
                         <div class="video-modal-content">
                             <iframe allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" title=""></iframe>
                         </div>
                         <div class="video-modal-gallery-section">
                             <div class="video-modal-header">
-                                <h3 class="video-modal-title"></h3>
+                                <h3 class="video-modal-title" id="mpVideoModalTitle"></h3>
                                 <p class="video-modal-description"></p>
                                 <?php if (get_option('menu_popup_show_price_modal', '1') == '1'): ?>
                                     <div class="video-modal-variations" style="display: none;"></div>
@@ -2154,7 +2240,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
 
                                 <div class="video-modal-actions" style="display: none;">
                                     <button class="action-btn video-add-to-cart-btn" style="display: none;">
-                                        <span class="cart-icon">🛒</span> <?php _e('Add to Cart', 'menu-popup'); ?>
+                                        <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php _e('Add to Cart', 'menu-popup'); ?>
                                     </button>
                                     <button class="action-btn video-order-whatsapp-btn" style="display: none;">
                                         <span class="whatsapp-icon">📱</span> <?php _e('Order Now', 'menu-popup'); ?>
@@ -2163,7 +2249,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                             </div>
                             <div class="video-modal-gallery"></div>
                         </div>
-                        <button class="video-modal-close" title="Close Video">×</button>
+                        <button type="button" class="video-modal-close" title="Close Video" aria-label="Close video">×</button>
                     </div>
                 </div>
             <?php endif; ?>
@@ -2284,7 +2370,7 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
                     <div class="menu-item-actions">
                         <?php if (get_option('menu_popup_ordering_enabled', '0') == '1'): ?>
                             <button class="action-btn add-to-cart-btn" data-item-id="<?php echo esc_attr($item->ID); ?>" data-name="<?php echo esc_attr($selected_name); ?>" data-price="<?php echo esc_attr($first_price ?? $price); ?>" data-selected-size="<?php echo esc_attr($sizes_variations[0]['size'] ?? ''); ?>" data-selected-price="<?php echo esc_attr($sizes_variations[0]['price'] ?? $price); ?>">
-                                <span class="cart-icon">🛒</span> <?php echo esc_html($selected_add_to_cart); ?>
+                                <span class="cart-icon" aria-hidden="true"><svg class="mp-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6"/></svg></span> <?php echo esc_html($selected_add_to_cart); ?>
                             </button>
                         <?php endif; ?>
 

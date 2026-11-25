@@ -586,7 +586,7 @@
 
 .category-btn.active {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
   transform: scale(1.05);
 }
@@ -879,7 +879,7 @@
   right: 1rem;
   padding: 0.25rem 0.75rem;
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 9999px;
@@ -1711,7 +1711,7 @@
 .size-btn.active {
   background: var(--menu-primary);
   border-color: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
   transform: translateY(-1px);
 }
@@ -1795,7 +1795,7 @@
 .modal-size-tag.active {
   background: var(--menu-primary);
   border-color: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.5);
   transform: translateY(-1px);
 }
@@ -1864,7 +1864,7 @@
 
 .add-to-cart-btn {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border-color: var(--menu-primary);
 }
 
@@ -1899,7 +1899,7 @@
   bottom: 20px;
   left: 20px;
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border-radius: 50%;
   width: 60px;
   height: 60px;
@@ -2021,7 +2021,7 @@
 
 .cart-notification-view {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border: none;
   padding: 4px 8px;
   border-radius: 4px;
@@ -2242,7 +2242,7 @@
 
 .cart-order-btn {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
 }
 
 .cart-order-btn:hover {
@@ -2416,7 +2416,7 @@
 
 .order-form-submit {
   background: linear-gradient(135deg, var(--menu-primary), var(--menu-accent));
-  color: var(--menu-bg);
+  color: var(--menu-on-gradient, var(--menu-bg));
 }
 
 .order-form-submit:hover {
@@ -2490,9 +2490,13 @@
 }
 
 .cart-toggle-icon::before {
-  content: "🛒";
-  font-size: 20px;
-  color: var(--menu-cart-icon-color);
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  background-color: var(--menu-cart-icon-color, currentColor);
+  -webkit-mask: var(--mp-cart-mask) center / contain no-repeat;
+  mask: var(--mp-cart-mask) center / contain no-repeat;
   transition: all 0.3s ease;
 }
 
@@ -2880,7 +2884,7 @@
   width: 100%;
   padding: 10px 16px;
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -3125,7 +3129,7 @@
 
 .confirmation-proceed {
   background: linear-gradient(135deg, var(--menu-primary), var(--menu-accent));
-  color: var(--menu-bg);
+  color: var(--menu-on-gradient, var(--menu-bg));
 }
 
 .confirmation-proceed:hover {
@@ -3592,7 +3596,7 @@
 
 .review-place-order {
   background: linear-gradient(135deg, var(--menu-primary), var(--menu-accent));
-  color: var(--menu-bg);
+  color: var(--menu-on-gradient, var(--menu-bg));
 }
 
 .review-place-order:hover {
@@ -3855,7 +3859,7 @@
   padding: 20px 24px;
   border-bottom: 1px solid rgba(249, 250, 251, 0.1);
   background: linear-gradient(135deg, var(--menu-primary), var(--menu-accent));
-  color: var(--menu-bg);
+  color: var(--menu-on-gradient, var(--menu-bg));
   border-radius: 14px 14px 0 0;
 }
 
@@ -3988,7 +3992,7 @@
 
 .voice-alternative-btn[data-primary="true"] {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border-color: var(--menu-primary);
 }
 
@@ -4023,7 +4027,7 @@
 
 .voice-confirm-btn {
   background: linear-gradient(135deg, var(--menu-primary), var(--menu-accent));
-  color: var(--menu-bg);
+  color: var(--menu-on-gradient, var(--menu-bg));
   border: none;
 }
 
@@ -4156,7 +4160,7 @@
 
 .voice-category-yes {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border-color: var(--menu-primary);
 }
 
@@ -4234,7 +4238,7 @@
 
 .voice-item-yes {
   background: var(--menu-accent);
-  color: var(--menu-bg);
+  color: var(--menu-on-accent, var(--menu-bg));
   border-color: var(--menu-accent);
 }
 
@@ -4515,7 +4519,7 @@
 
 .show-more-btn {
   background: var(--menu-primary);
-  color: var(--menu-bg);
+  color: var(--menu-on-primary, var(--menu-bg));
   border: none;
   padding: 12px 24px;
   border-radius: 8px;
@@ -4581,3 +4585,221 @@
   }
 }
 /* ===== END SHOW MORE BUTTON STYLES ===== */
+
+/* ==========================================================================
+   Accessibility and usability refinements (7.7.0)
+   ========================================================================== */
+.menu-popup-container,
+.cart-toggle-btn {
+  --mp-cart-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='20' r='1.5'/><circle cx='18' cy='20' r='1.5'/><path d='M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6'/></svg>");
+}
+
+.mp-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.cart-icon,
+.order-icon,
+.order-icon-confirmation,
+.order-confirmation-icon,
+.order-review-icon,
+.delivery-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* Keyboard focus: a double ring that stays visible on light and dark backgrounds */
+.menu-popup-container :focus-visible,
+.branch-card:focus-visible,
+.cart-toggle-icon:focus-visible,
+.cart-flyout :focus-visible,
+.cart-notification :focus-visible,
+.cart-modal :focus-visible,
+.order-form-modal :focus-visible,
+.order-confirmation-modal :focus-visible,
+.order-review-modal :focus-visible,
+.video-modal-overlay :focus-visible,
+.branch-change-modal-overlay :focus-visible {
+  outline: 2px solid #ffffff !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px #1f2937 !important;
+}
+
+/* Badge text on the cart icon */
+.cart-toggle-count {
+  color: var(--menu-on-primary, #ffffff);
+}
+
+/* Cart header title: solid text instead of gradient-clipped (transparent) text */
+.cart-flyout-header h4 {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: var(--menu-text);
+}
+
+.cart-items-count {
+  color: var(--menu-text);
+  opacity: 0.8;
+}
+
+/* Touch targets: at least 24px everywhere, 44px for the main controls */
+.language-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.search-clear,
+.cart-modal-close,
+.cart-flyout-close,
+.cart-notification-close {
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.branch-card {
+  cursor: pointer;
+}
+
+/* Order type choices (order form + confirmation): whole card is the tap target */
+.order-type-options,
+.order-type-options-confirmation {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.order-type-option,
+.order-type-option-confirmation {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+}
+
+.order-type-option input[type="radio"],
+.order-type-option-confirmation input[type="radio"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.order-type-option .option-content,
+.order-type-option-confirmation .option-content-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  color: var(--menu-order-modal-text, var(--menu-text));
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.order-type-option input:checked + .option-content,
+.order-type-option-confirmation input:checked + .option-content-confirmation {
+  border-color: var(--menu-primary);
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+}
+
+.order-type-option input:focus-visible + .option-content,
+.order-type-option-confirmation input:focus-visible + .option-content-confirmation {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px #1f2937;
+}
+
+/* Payment methods: larger radios and rows */
+#payment-methods-list .payment-method-option,
+#payment-methods-list-confirmation .payment-method-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 48px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+#payment-methods-list .payment-method-option {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+}
+
+#payment-methods-list .payment-method-option label {
+  flex: 1;
+  cursor: pointer;
+}
+
+#payment-methods-list .payment-method-option:has(input:checked) {
+  border-color: var(--menu-primary);
+}
+
+#payment-methods-list .payment-method-option input[type="radio"],
+#payment-methods-list-confirmation .payment-method-option input[type="radio"] {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  cursor: pointer;
+}
+
+/* Button hierarchy in the order flow: the main action is the strongest control */
+.confirmation-proceed,
+.review-place-order,
+.order-form-submit {
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.confirmation-cancel,
+.review-modify-order,
+.order-form-cancel {
+  min-height: 44px;
+  background: transparent;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-popup-container *,
+  .menu-popup-container *::before,
+  .menu-popup-container *::after,
+  .cart-toggle-btn,
+  .cart-toggle-btn *,
+  .cart-flyout,
+  .cart-notification,
+  .cart-modal,
+  .cart-modal *,
+  .order-form-modal,
+  .order-form-modal *,
+  .order-confirmation-modal,
+  .order-confirmation-modal *,
+  .order-review-modal,
+  .order-review-modal *,
+  .video-modal-overlay,
+  .video-modal-overlay *,
+  .branch-change-modal-overlay,
+  .branch-change-modal-overlay * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

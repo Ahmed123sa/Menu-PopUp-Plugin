@@ -38,8 +38,9 @@
   // Open state by the element's own switch (not by opacity, which is mid-transition when we look)
   function isOpen(el) {
     if (el.classList.contains("cart-flyout")) return el.classList.contains("visible");
+    // These two modals are shown through the "active" class (the inline display:none is overridden by CSS)
     if (el.id === "globalVideoModal" || el.id === "branchChangeModal") {
-      return el.style.display !== "none" && el.getClientRects().length > 0;
+      return el.classList.contains("active") || (el.style.display !== "none" && el.getClientRects().length > 0);
     }
     return el.classList.contains("active");
   }

@@ -797,12 +797,10 @@
     }
 
     handleResponsiveBehavior() {
-      // Hide voice button if disabled on mobile and screen is small
-      if ($(window).width() < 768 && !this.options.enableMobileHover) {
-        this.hideVoiceButton();
-      } else {
-        this.showVoiceButton();
-      }
+      // The voice search button follows the "Enable Voice Search" setting only.
+      // "Hover pronunciation on mobile" belongs to speech-synthesis.js and must not
+      // hide this button on phones. Unsupported browsers are handled in init().
+      this.showVoiceButton();
     }
 
     hideVoiceButton() {

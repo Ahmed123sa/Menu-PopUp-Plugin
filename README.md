@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.6.2 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.6.3 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -517,6 +517,9 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.6.3**
+- Voice search: the microphone button now shows on phones whenever voice search is on (it was wrongly tied to the "hover pronunciation on mobile" setting)
 
 **7.6.2**
 - The store-wide minimum order from the settings is now enforced when an order is placed (delivery and pickup)

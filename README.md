@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.7.4 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.8.4 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -518,6 +518,29 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 
 ## Changelog
 
+**7.8.4**
+- Item edit screen: the older single "Branch" field is now shown only for items that already use it; new items use "Pricing by branch". Items tied to a branch keep working, and a notice explains how they interact with the new box
+
+**7.8.3**
+- Branch Pricing: switching a category off for a branch no longer also switches each of its items off one by one; the item tables show only the item's own setting, so turning the category back on brings all items back
+
+**7.8.2**
+- Branch Pricing: new "Categories by branch" table; untick a category to hide it, with all its items (including items added later), at a branch; the category button also disappears from that branch's menu, and orders for that branch reject those items
+
+**7.8.1**
+- Branch Pricing page reorganised into three steps: Menus, Default menu, Prices
+- You choose the default menu yourself; a page that shows all menus opens it, and after a branch is chosen the menu linked to that branch opens
+- Overview table of your menus with their categories and branches
+- Prices table can be filtered by menu, category or name
+- Removed the "adjust many prices at once" tool
+
+**7.8.0**
+- Branch pricing: one shared item can be sold at some branches and not others, with its own price (and its own size prices) at each branch; images, videos and descriptions stay shared
+- New "Branch Pricing" page: choose how customers pick a menu, name the default menu (English and Arabic), see each branch at a glance, edit availability and prices for all items in one table, and preview a percent or amount change before saving
+- New "Pricing by branch" box on the item edit screen
+- The default menu (no branch chosen) uses each item's normal price and sizes; items with no branch settings are sold everywhere at that price, so existing menus do not change
+- Orders: prices and availability are checked on the server for the branch of the order; when the delivery address belongs to another branch, the customer reviews changed prices or removed items before the order is placed
+- Removed the remaining emoji from the admin screens
 **7.7.4**
 - Language switcher: choosing a language now opens the page with that language in the address (?lang=ar / ?lang=en), so the change shows even when a page cache is active; a saved choice is also applied to a cached page
 - Video window: title and description follow the chosen language

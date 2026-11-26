@@ -275,7 +275,7 @@ class PaymentSettings {
         ?>
         <form method="post" id="payment-settings-form" class="payment-settings-form" style="margin-top: 40px;">
             <input type="hidden" name="nonce" value="<?php echo esc_attr($nonce); ?>">
-            <h2><?php _e('💳 Payment Methods', 'menu-popup'); ?></h2>
+            <h2><?php _e('Payment Methods', 'menu-popup'); ?></h2>
             <p class="description"><?php _e('Configure payment methods for online orders', 'menu-popup'); ?></p>
             
             <?php

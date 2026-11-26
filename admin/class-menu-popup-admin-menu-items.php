@@ -236,7 +236,10 @@ class Menu_Popup_Admin_Menu_Items extends Menu_Popup_Abstract_Handler {
         update_post_meta($post_id, '_menu_item_price', sanitize_text_field($_POST['menu_item_price']));
         update_post_meta($post_id, '_menu_item_menu', sanitize_text_field($_POST['menu_item_menu']));
         update_post_meta($post_id, '_menu_item_category', sanitize_text_field($_POST['menu_item_category']));
-        update_post_meta($post_id, '_menu_item_branch', isset($_POST['menu_item_branch']) ? sanitize_text_field($_POST['menu_item_branch']) : '');
+        // Only when the field was shown: items that never used it keep no branch
+        if (isset($_POST['menu_item_branch'])) {
+            update_post_meta($post_id, '_menu_item_branch', sanitize_text_field($_POST['menu_item_branch']));
+        }
         update_post_meta($post_id, '_menu_item_image', esc_url_raw($_POST['menu_item_image']));
         update_post_meta($post_id, '_menu_item_add_to_cart_arabic', sanitize_text_field($_POST['menu_item_add_to_cart_arabic']));
         update_post_meta($post_id, '_menu_item_order_now_arabic', sanitize_text_field($_POST['menu_item_order_now_arabic']));
@@ -438,6 +441,12 @@ class Menu_Popup_Admin_Menu_Items extends Menu_Popup_Abstract_Handler {
                     </p>
                 </td>
             </tr>
+            <?php
+            // The single-branch field is only kept for items that already use it.
+            // New items use "Pricing by branch" below instead.
+            $mp_tied_branch = get_post_meta($post->ID, '_menu_item_branch', true);
+            if ($mp_tied_branch !== '' && $mp_tied_branch !== false) :
+            ?>
             <tr>
                 <th><label for="menu_item_branch"><?php _e('Branch', 'menu-popup'); ?></label></th>
                 <td>
@@ -460,10 +469,11 @@ class Menu_Popup_Admin_Menu_Items extends Menu_Popup_Abstract_Handler {
                         <?php endif; ?>
                     </select>
                     <p class="description">
-                        <?php _e('Select a specific branch for this item. Leave empty to show in all branches.', 'menu-popup'); ?>
+                        <?php _e('This item is tied to one branch (older setting). Choose "All Branches" and use "Pricing by branch" below to control it per branch.', 'menu-popup'); ?>
                     </p>
                 </td>
             </tr>
+            <?php endif; ?>
             <tr>
                 <th><label for="menu_item_image"><?php _e('Image URL', 'menu-popup'); ?></label></th>
                 <td><input type="url" id="menu_item_image" name="menu_item_image" value="<?php echo esc_url($menu_item_image); ?>" size="50" placeholder="https://example.com/image.jpg" /></td>
@@ -566,7 +576,10 @@ class Menu_Popup_Admin_Menu_Items extends Menu_Popup_Abstract_Handler {
         update_post_meta($post_id, '_menu_item_price', sanitize_text_field($_POST['menu_item_price']));
         update_post_meta($post_id, '_menu_item_menu', isset($_POST['menu_item_menu']) ? sanitize_text_field($_POST['menu_item_menu']) : '');
         update_post_meta($post_id, '_menu_item_category', sanitize_text_field($_POST['menu_item_category']));
-        update_post_meta($post_id, '_menu_item_branch', isset($_POST['menu_item_branch']) ? sanitize_text_field($_POST['menu_item_branch']) : '');
+        // Only when the field was shown: items that never used it keep no branch
+        if (isset($_POST['menu_item_branch'])) {
+            update_post_meta($post_id, '_menu_item_branch', sanitize_text_field($_POST['menu_item_branch']));
+        }
         update_post_meta($post_id, '_menu_item_image', esc_url_raw($_POST['menu_item_image']));
 
         // Process videos

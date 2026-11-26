@@ -3226,7 +3226,7 @@
                 waWindow.close();
               }
               this.setOrderButtonsBusy(false);
-              alert(this.orderErrorMessage(response));
+              this.showOrderError(response);
               return;
             }
 
@@ -3879,8 +3879,174 @@
         return {};
       }
 
-      // Send the order to the server. Returns the jQuery request.
+      // Send the order to the server. Returns a promise that behaves like the jQuery request.
+      // When the address belongs to another branch with different prices, the customer
+      // reviews the change first and the order is sent again with their confirmation.
       placeOrder(formData, source) {
+        const result = $.Deferred();
+        const send = (confirmBranch) => {
+          this.sendOrderRequest(formData, source, confirmBranch)
+            .done((response) => {
+              const err = response && !response.success && response.data;
+              if (err && err.code === "branch_prices_changed" && err.data) {
+                this.reviewBranchChange(err, () => send(err.data.branch_id)).then(
+                  (outcome) => {
+                    if (outcome === "cancel") {
+                      result.resolve({ success: false, data: { code: "cancelled", message: "" } });
+                    } else if (outcome === "cart") {
+                      result.resolve({ success: false, data: { code: "cancelled", message: "" } });
+                    }
+                  }
+                );
+                return;
+              }
+              result.resolve(response);
+            })
+            .fail((...args) => result.reject(...args));
+        };
+        send(0);
+        return result.promise();
+      }
+
+      // Show what changes at the new branch. Resolves "confirm", "cancel" or "cart".
+      reviewBranchChange(err, onConfirm) {
+        const done = $.Deferred();
+        const d = err.data;
+        const isAr =
+          (document.documentElement.lang || "").toLowerCase().indexOf("ar") === 0 ||
+          $(".menu-popup-container.menu-rtl").length > 0;
+        const t = (en, ar) => (isAr ? ar : en);
+        const cur = menuPopupAjax.currencySymbol || "";
+        const esc = (v) => $("<div>").text(v == null ? "" : String(v)).html();
+
+        // Update the cart with the branch's own prices and drop what it does not sell
+        const unavailableIds = (d.unavailable || []).map((u) => String(u.id));
+        let removed = [];
+        Object.keys(this.cart).forEach((key) => {
+          const item = this.cart[key];
+          const id = String(item.id || String(key).split("_")[0]);
+          if (unavailableIds.indexOf(id) !== -1) {
+            removed.push(item.name || "");
+          }
+        });
+
+        const hasRemoved = unavailableIds.length > 0;
+        let rows = "";
+        if (hasRemoved) {
+          rows = removed
+            .map((n) => `<li>${esc(n)}</li>`)
+            .join("");
+        } else {
+          rows = (d.prices || [])
+            .map((p) => {
+              const key = Object.keys(this.cart).find((k) => {
+                const it = this.cart[k];
+                const id = String(it.id || String(k).split("_")[0]);
+                return id === String(p.id) && String(it.size || "").toLowerCase() === String(p.size || "").toLowerCase();
+              });
+              if (!key) return "";
+              const it = this.cart[key];
+              if (Math.abs((parseFloat(it.price) || 0) - p.price) < 0.001) return "";
+              return `<li><span>${esc(it.name)}</span><span>${esc(cur)}${(parseFloat(it.price) || 0).toFixed(2)} &rarr; <strong>${esc(cur)}${p.price.toFixed(2)}</strong></span></li>`;
+            })
+            .join("");
+        }
+
+        const title = hasRemoved
+          ? t("Some items are not available at your branch", "بعض الأصناف غير متاحة في فرعك")
+          : t("Prices differ at your branch", "الأسعار تختلف في فرعك");
+        const intro = hasRemoved
+          ? t("Your address is served by " + d.branch_name + ". These items are not sold there and will be removed from your cart:",
+              "عنوانك يتبع " + d.branch_name + ". الأصناف دي مش متاحة هناك وهتتشال من السلة:")
+          : t("Your address is served by " + d.branch_name + ". These items have different prices there:",
+              "عنوانك يتبع " + d.branch_name + ". الأصناف دي أسعارها مختلفة هناك:");
+
+        const $overlay = $(
+          '<div class="mp-branch-review" role="presentation">' +
+            '<div class="mp-branch-review__box" role="dialog" aria-modal="true" aria-labelledby="mp-br-title"' +
+            (isAr ? ' dir="rtl"' : "") + ">" +
+            '<h3 id="mp-br-title">' + esc(title) + "</h3>" +
+            "<p>" + esc(intro) + "</p>" +
+            '<ul class="mp-branch-review__list">' + rows + "</ul>" +
+            '<div class="mp-branch-review__actions">' +
+            '<button type="button" class="mp-br-cancel">' + esc(t("Back to cart", "الرجوع للسلة")) + "</button>" +
+            '<button type="button" class="mp-br-ok">' +
+            esc(hasRemoved ? t("Update my cart", "تحديث السلة") : t("Continue with new prices", "المتابعة بالأسعار الجديدة")) +
+            "</button></div></div></div>"
+        );
+
+        if (!$("#mp-branch-review-css").length) {
+          $("head").append(
+            '<style id="mp-branch-review-css">' +
+              ".mp-branch-review{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}" +
+              ".mp-branch-review__box{background:#fff;color:#1d2327;max-width:440px;width:100%;border-radius:12px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.35);max-height:85vh;overflow:auto}" +
+              ".mp-branch-review__box h3{margin:0 0 8px;font-size:18px}" +
+              ".mp-branch-review__box p{margin:0 0 12px;font-size:14px;line-height:1.5}" +
+              ".mp-branch-review__list{list-style:none;margin:0 0 16px;padding:0}" +
+              ".mp-branch-review__list li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #e5e5e5;font-size:14px}" +
+              ".mp-branch-review__actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}" +
+              ".mp-branch-review__actions button{min-height:44px;padding:0 16px;border-radius:8px;border:1px solid #8c8f94;background:#fff;color:#1d2327;font-size:14px;cursor:pointer}" +
+              ".mp-branch-review__actions .mp-br-ok{background:#8f5a38;border-color:#8f5a38;color:#fff}" +
+              ".mp-branch-review__actions button:focus-visible{outline:3px solid #2271b1;outline-offset:2px}" +
+              "</style>"
+          );
+        }
+
+        const close = () => {
+          $(document).off("keydown.mpbr");
+          $overlay.remove();
+          this.setOrderButtonsBusy(false);
+        };
+
+        $overlay.find(".mp-br-cancel").on("click", () => {
+          close();
+          done.resolve("cancel");
+        });
+        $overlay.find(".mp-br-ok").on("click", () => {
+          if (hasRemoved) {
+            // Remove what the branch does not sell, then let the customer check the cart
+            Object.keys(this.cart).forEach((key) => {
+              const item = this.cart[key];
+              const id = String(item.id || String(key).split("_")[0]);
+              if (unavailableIds.indexOf(id) !== -1) {
+                delete this.cart[key];
+              }
+            });
+            this.saveCartToStorage(this.cart);
+            this.updateCartUI();
+            close();
+            done.resolve("cart");
+            return;
+          }
+          // New prices accepted: update the cart, then send the order again
+          (d.prices || []).forEach((p) => {
+            Object.keys(this.cart).forEach((k) => {
+              const it = this.cart[k];
+              const id = String(it.id || String(k).split("_")[0]);
+              if (id === String(p.id) && String(it.size || "").toLowerCase() === String(p.size || "").toLowerCase()) {
+                it.price = p.price;
+              }
+            });
+          });
+          this.saveCartToStorage(this.cart);
+          this.updateCartUI();
+          $overlay.remove();
+          $(document).off("keydown.mpbr");
+          onConfirm();
+          done.resolve("confirm");
+        });
+        $(document).on("keydown.mpbr", (e) => {
+          if (e.key === "Escape") {
+            $overlay.find(".mp-br-cancel").trigger("click");
+          }
+        });
+
+        $("body").append($overlay);
+        $overlay.find(".mp-br-ok").trigger("focus");
+        return done.promise();
+      }
+
+      sendOrderRequest(formData, source, confirmBranch) {
         if (!this.orderRequestId) {
           this.orderRequestId = this.newRequestId();
         }
@@ -3897,6 +4063,7 @@
               source: source || "online",
               order_type: formData.order_type || "pickup",
               branch_id: menuPopupAjax.activeBranchId || 0,
+              confirm_branch: confirmBranch || 0,
               table_id:
                 formData.order_type === "dine_in" && menuPopupAjax.table ? menuPopupAjax.table.id : 0,
               table_sig:
@@ -3917,6 +4084,14 @@
             },
           },
         });
+      }
+
+      // Show the server's refusal unless the customer already handled it in the review window
+      showOrderError(response) {
+        if (response && response.data && response.data.code === "cancelled") {
+          return;
+        }
+        alert(this.orderErrorMessage(response));
       }
 
       // Message to show when the server refused the order or was unreachable
@@ -3968,7 +4143,7 @@
             } else {
               this.orderRequestId = null;
               this.setOrderButtonsBusy(false);
-              alert(this.orderErrorMessage(response));
+              this.showOrderError(response);
             }
           })
           .fail(() => {
@@ -4130,7 +4305,7 @@
             } else {
               this.orderRequestId = null;
               this.setOrderButtonsBusy(false);
-              alert(this.orderErrorMessage(response));
+              this.showOrderError(response);
             }
           })
           .fail(() => {

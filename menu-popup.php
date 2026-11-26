@@ -3,7 +3,7 @@
  * Plugin Name: Menu Pop-up
  * Plugin URI: https://github.com/Ahmed123sa/Menu-PopUp-Plugin
  * Description: Interactive menu display with video popup functionality and category filtering
- * Version: 7.7.4
+ * Version: 7.8.4
  * Author: Ahmed Ali
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 define('MENU_POPUP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MENU_POPUP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MENU_POPUP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MENU_POPUP_VERSION', '7.7.4');
+define('MENU_POPUP_VERSION', '7.8.4');
 
 /**
  * Main Plugin Class
@@ -66,6 +66,9 @@ class Menu_Popup_Plugin
         require_once plugin_dir_path(__FILE__) . 'includes/class-menu-popup-abstract-handler.php';
         // Include utility functions
         require_once plugin_dir_path(__FILE__) . 'includes/class-menu-popup-utils.php';
+        // Branch pricing and availability
+        require_once plugin_dir_path(__FILE__) . 'includes/class-menu-popup-pricing.php';
+        Menu_Popup_Pricing::init();
         // Include custom post types and taxonomies
         require_once plugin_dir_path(__FILE__) . 'includes/class-menu-popup-post-types.php';
         
@@ -82,6 +85,7 @@ class Menu_Popup_Plugin
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-orders.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-orders-board.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-branches.php'; // Include branch admin class
+        require_once plugin_dir_path(__FILE__) . 'admin/class-menu-popup-admin-pricing.php';
         require_once plugin_dir_path(__FILE__) . 'admin/class-payment-settings.php'; // Payment settings
         require_once plugin_dir_path(__FILE__) . 'admin/settings-page.php'; // Moved inclusion here
         // Include frontend class
@@ -132,6 +136,7 @@ class Menu_Popup_Plugin
         $this->admin_menu_items = new Menu_Popup_Admin_Menu_Items($this->version, $this->utils);
         $this->admin_orders = new Menu_Popup_Admin_Orders($this->version, $this->utils);
         $this->admin_branches = new Menu_Popup_Admin_Branches($this->version, $this->utils); // Initialize branch admin
+        new Menu_Popup_Admin_Pricing();
         $this->settings = new Menu_Popup_Settings(); // Instantiate settings
         $this->admin_dashboard = new Menu_Popup_Admin_Dashboard($this->version, $this->admin_menu_items, $this->admin_orders, $this->settings);
         

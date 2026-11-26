@@ -288,7 +288,7 @@ add_submenu_page(
 
                         <?php if (!$has_categories): ?>
                             <div class="notice notice-info inline">
-                                <p><?php _e('⚠️ You don\'t have any categories yet. Categories help organize your menu items and improve navigation.', 'menu-popup'); ?></p>
+                                <p><?php _e('You don\'t have any categories yet. Categories help organize your menu items and improve navigation.', 'menu-popup'); ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -300,13 +300,13 @@ add_submenu_page(
                             <div class="status-item">
                                 <span class="status-label"><?php _e('Video Support:', 'menu-popup'); ?></span>
                                 <span class="status-value <?php echo get_option('menu_popup_enable_videos', '1') == '1' ? 'enabled' : 'disabled'; ?>">
-                                    <?php echo get_option('menu_popup_enable_videos', '1') == '1' ? __('Enabled ✅', 'menu-popup') : __('Disabled ❌', 'menu-popup'); ?>
+                                    <?php echo get_option('menu_popup_enable_videos', '1') == '1' ? __('Enabled', 'menu-popup') : __('Disabled', 'menu-popup'); ?>
                                 </span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label"><?php _e('Ordering:', 'menu-popup'); ?></span>
                                 <span class="status-value <?php echo get_option('menu_popup_ordering_enabled', '0') == '1' ? 'enabled' : 'disabled'; ?>">
-                                    <?php echo get_option('menu_popup_ordering_enabled', '0') == '1' ? __('Enabled ✅', 'menu-popup') : __('Disabled', 'menu-popup'); ?>
+                                    <?php echo get_option('menu_popup_ordering_enabled', '0') == '1' ? __('Enabled', 'menu-popup') : __('Disabled', 'menu-popup'); ?>
                                 </span>
                             </div>
                             <div class="status-item">

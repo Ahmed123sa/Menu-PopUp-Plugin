@@ -257,6 +257,43 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         ));
     }
 
+    /**
+     * A page that shows all menus opens the default menu (when one is set in
+     * Branch Pricing), or the menu linked to the chosen branch.
+     */
+    private function apply_default_menu($atts) {
+        $default = (string) get_option('menu_popup_default_menu', '');
+        if ($default === '' || !isset($atts['menu']) || $atts['menu'] !== 'all') {
+            return $atts;
+        }
+        $menus = get_option('menu_popup_menus', array());
+        if (!is_array($menus)) {
+            return $atts;
+        }
+        $slugs = array();
+        foreach ($menus as $m) {
+            if (!empty($m['slug'])) {
+                $slugs[$m['slug']] = $m;
+            }
+        }
+        if (!isset($slugs[$default])) {
+            return $atts;
+        }
+
+        $branch = $this->requested_branch();
+        if ($branch > 0) {
+            foreach ($menus as $m) {
+                if (!empty($m['slug']) && !empty($m['branches']) && is_array($m['branches'])
+                    && in_array($branch, array_map('intval', $m['branches']), true)) {
+                    $atts['menu'] = $m['slug'];
+                    return $atts;
+                }
+            }
+        }
+        $atts['menu'] = $default;
+        return $atts;
+    }
+
     public function menu_popup_shortcode($atts) {
         // Prevent shortcode processing during AJAX, REST API, or POST operations to avoid corrupting JSON responses
         if ((defined('DOING_AJAX') && DOING_AJAX) ||
@@ -274,6 +311,8 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             'show_search' => 'false',
             'all_filter' => 'true'
         ), $atts);
+
+        $atts = $this->apply_default_menu($atts);
 
         // Suppress any potential warnings/errors during shortcode processing
         ob_start();
@@ -542,6 +581,16 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             });
         }
 
+        // Categories switched off at the chosen branch are not offered
+        if (!empty($custom_categories) && $branch_filter !== '' && class_exists('Menu_Popup_Pricing')) {
+            $off_cats = Menu_Popup_Pricing::off_categories((int) $branch_filter);
+            if (!empty($off_cats)) {
+                $custom_categories = array_filter($custom_categories, function($cat) use ($off_cats) {
+                    return !in_array($cat['slug'], $off_cats, true);
+                });
+            }
+        }
+
         // Ensure we have at least some categories to show after filtering
         if (!empty($custom_categories)) {
             // Sort categories by their order (if available) or alphabetically by name
@@ -685,7 +734,16 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
             <?php if ($current_branch_id > 0 || count($this->published_branches()) > 1): ?>
             <div class="branch-switcher">
                 <button id="changeBranch">
-                    <?php echo esc_html($current_branch_id > 0 ? get_the_title($current_branch_id) : __('Choose your branch', 'menu-popup')); ?>
+                    <?php
+                    if ($current_branch_id > 0) {
+                        echo esc_html(get_the_title($current_branch_id));
+                    } elseif (class_exists('Menu_Popup_Pricing') && (Menu_Popup_Pricing::is_active() || get_option('menu_popup_default_menu_name', '') !== '' || get_option('menu_popup_default_menu_name_ar', '') !== '')) {
+                        // Default menu: shown until a branch is chosen
+                        echo esc_html(Menu_Popup_Pricing::default_menu_name(($current_lang ?? 'en') === 'ar'));
+                    } else {
+                        esc_html_e('Choose your branch', 'menu-popup');
+                    }
+                    ?>
                     <span class="change-icon">↓</span>
                 </button>
             </div>
@@ -1084,6 +1142,9 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
         $voice_search_query = sanitize_text_field($_POST['voice_search_query'] ?? '');
         $branch_filter = sanitize_text_field($_POST['branch'] ?? '');
         $branch_filter = $this->valid_branch_id($branch_filter) > 0 ? (string) $this->valid_branch_id($branch_filter) : '';
+        if (class_exists('Menu_Popup_Pricing')) {
+            Menu_Popup_Pricing::set_context((int) $branch_filter);
+        }
         $search_query = sanitize_text_field($_POST['search'] ?? '');
         $offset = intval($_POST['offset'] ?? 0);
         $limit = intval($_POST['limit'] ?? -1);
@@ -1496,7 +1557,12 @@ class Menu_Popup_Frontend extends Menu_Popup_Abstract_Handler {
      * Branch id from the address bar, only if it is a real, published branch.
      */
     private function requested_branch() {
-        return $this->valid_branch_id(isset($_GET['branch']) ? $_GET['branch'] : 0);
+        $branch = $this->valid_branch_id(isset($_GET['branch']) ? $_GET['branch'] : 0);
+        // Prices and availability on this page follow the chosen branch
+        if (class_exists('Menu_Popup_Pricing')) {
+            Menu_Popup_Pricing::set_context($branch);
+        }
+        return $branch;
     }
 
     private function valid_branch_id($id) {

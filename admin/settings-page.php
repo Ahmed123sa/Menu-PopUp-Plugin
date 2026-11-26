@@ -3682,7 +3682,7 @@ class Menu_Popup_Settings {
             <div class="mp-settings-panel" data-tab="payment">
             <form id="payment-settings-form-ajax" method="post">
                 <input type="hidden" name="nonce" value="<?php echo esc_attr($payment_nonce); ?>">
-                <h2><?php _e('💳 Payment Methods', 'menu-popup'); ?></h2>
+                <h2><?php _e('Payment Methods', 'menu-popup'); ?></h2>
                 <p class="description"><?php _e('Configure payment methods for online orders', 'menu-popup'); ?></p>
                 
                 <h3><?php _e('General Settings', 'menu-popup'); ?></h3>

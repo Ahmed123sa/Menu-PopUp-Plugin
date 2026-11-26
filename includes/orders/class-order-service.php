@@ -62,6 +62,7 @@ class Menu_Popup_Order_Service {
             wp_send_json_error(array(
                 'code'    => $result->get_error_code(),
                 'message' => $result->get_error_message(),
+                'data'    => $result->get_error_data(),
             ));
         }
 
@@ -187,7 +188,7 @@ class Menu_Popup_Order_Service {
                 // The address can belong to another branch than the one the menu was opened from
                 if ($quote['branch_id'] > 0 && $quote['branch_id'] !== $branch_id) {
                     $branch_id = $quote['branch_id'];
-                    $lines     = $this->build_lines(isset($in['items']) ? $in['items'] : array(), $branch_id);
+                    $lines     = $this->lines_for_new_branch($in, $lines, $branch_id);
                     if (is_wp_error($lines)) {
                         return $lines;
                     }
@@ -228,6 +229,21 @@ class Menu_Popup_Order_Service {
                 $delivery['fee']       = $zone['fee'];
                 if ($branch_id === 0 && $zone['branch_id'] > 0) {
                     $branch_id = $zone['branch_id'];
+
+                    // The zone belongs to a branch: price the cart at that branch
+                    if (class_exists('Menu_Popup_Pricing') && Menu_Popup_Pricing::is_active()) {
+                        $lines = $this->lines_for_new_branch($in, $lines, $branch_id);
+                        if (is_wp_error($lines)) {
+                            return $lines;
+                        }
+                        list($subtotal, $tax) = $this->compute_totals($lines);
+
+                        $zone = $this->resolve_zone(isset($in['delivery_zone']) ? absint($in['delivery_zone']) : 0, $branch_id, $subtotal, $tax);
+                        if (is_wp_error($zone)) {
+                            return $zone;
+                        }
+                        $delivery['fee'] = $zone['fee'];
+                    }
                 }
 
                 if ($has_pin) {
@@ -409,11 +425,80 @@ class Menu_Popup_Order_Service {
     // ---------------------------------------------------------------------
 
     /**
+     * The address belongs to another branch than the cart was priced for.
+     * Re-price the cart there. When anything is unavailable or a price changed,
+     * stop with branch_prices_changed so the customer can review and confirm
+     * (the browser then sends confirm_branch with the branch id).
+     *
+     * @return array|WP_Error New lines, or the review error.
+     */
+    private function lines_for_new_branch(array $in, array $old_lines, $new_branch) {
+        $new_branch = (int) $new_branch;
+        $items      = isset($in['items']) ? $in['items'] : array();
+
+        if (!class_exists('Menu_Popup_Pricing') || !Menu_Popup_Pricing::is_active()) {
+            return $this->build_lines($items, $new_branch);
+        }
+
+        // Which cart items this branch does not sell
+        $unavailable = array();
+        foreach ($old_lines as $line) {
+            if (!Menu_Popup_Pricing::is_available($line['id'], $new_branch)) {
+                $unavailable[] = array('id' => (int) $line['id'], 'name' => $line['name']);
+            }
+        }
+
+        $details = array(
+            'branch_id'   => $new_branch,
+            'branch_name' => (string) get_the_title($new_branch),
+            'unavailable' => $unavailable,
+            'prices'      => array(),
+        );
+
+        if (empty($unavailable)) {
+            $new_lines = $this->build_lines($items, $new_branch);
+            if (is_wp_error($new_lines)) {
+                return $new_lines;
+            }
+            $changed = false;
+            foreach ($new_lines as $i => $line) {
+                $before = isset($old_lines[$i]) ? (float) $old_lines[$i]['price'] : (float) $line['price'];
+                if (abs($before - (float) $line['price']) > 0.001) {
+                    $changed = true;
+                }
+                $details['prices'][] = array(
+                    'id'    => (int) $line['id'],
+                    'size'  => $line['size'],
+                    'price' => (float) $line['price'],
+                );
+            }
+            $confirmed = isset($in['confirm_branch']) && absint($in['confirm_branch']) === $new_branch;
+            if (!$changed || $confirmed) {
+                return $new_lines;
+            }
+        }
+
+        return new WP_Error(
+            'branch_prices_changed',
+            sprintf(
+                /* translators: %s: branch name */
+                __('Your address is served by %s. Prices or availability differ there. Please review your cart.', 'menu-popup'),
+                $details['branch_name']
+            ),
+            $details
+        );
+    }
+
+    /**
      * Turn the submitted cart into priced order lines.
      *
      * @return array|WP_Error
      */
     private function build_lines($items, $branch_id) {
+        // Prices come from the branch the order is for
+        if (class_exists('Menu_Popup_Pricing')) {
+            Menu_Popup_Pricing::set_context($branch_id);
+        }
         if (!is_array($items) || empty($items)) {
             return new WP_Error('empty_cart', __('Your cart is empty.', 'menu-popup'));
         }
@@ -504,6 +589,18 @@ class Menu_Popup_Order_Service {
             return new WP_Error('item_unavailable', sprintf(
                 /* translators: 1: item name, 2: branch name */
                 __('"%1$s" is not available at %2$s, the branch that serves your address. Please remove it from your cart or choose pickup.', 'menu-popup'),
+                $item_name !== '' ? $item_name : $post->post_title,
+                $branch_name !== '' ? $branch_name : __('that branch', 'menu-popup')
+            ));
+        }
+
+        if ($branch_id > 0 && class_exists('Menu_Popup_Pricing') && !Menu_Popup_Pricing::is_available($id, $branch_id)) {
+            $this->log_rejected($id, $size, 'switched off at branch ' . $branch_id);
+            $branch_name = (string) get_the_title($branch_id);
+            $item_name   = (string) get_post_meta($id, '_menu_item_name', true);
+            return new WP_Error('item_unavailable', sprintf(
+                /* translators: 1: item name, 2: branch name */
+                __('"%1$s" is not available at %2$s. Please remove it from your cart.', 'menu-popup'),
                 $item_name !== '' ? $item_name : $post->post_title,
                 $branch_name !== '' ? $branch_name : __('that branch', 'menu-popup')
             ));

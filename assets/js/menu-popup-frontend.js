@@ -454,22 +454,40 @@
         });
 
         // Language switcher functionality
+        // The language is chosen by the server, so the page is opened with ?lang=xx.
+        // This also gives each language its own URL, which page caches keep apart.
         const languageBtns = $(".language-btn");
+        const setLangCookie = (lang) => {
+          const expirationDate = new Date();
+          expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+          document.cookie = `menu_popup_lang=${lang}; expires=${expirationDate.toUTCString()}; path=/; samesite=lax`;
+        };
         languageBtns.on("click", (e) => {
           e.preventDefault();
           const lang = $(e.currentTarget)
             .attr("href")
             .match(/[?&]lang=([^&]*)/)?.[1];
           if (lang) {
-            // Set cookie for language preference
-            const expirationDate = new Date();
-            expirationDate.setFullYear(expirationDate.getFullYear() + 1); // Cookie lasts 1 year
-            document.cookie = `menu_popup_lang=${lang}; expires=${expirationDate.toUTCString()}; path=/`;
-
-            // Reload the page to apply the language change
-            window.location.reload();
+            setLangCookie(lang);
+            const url = new URL(window.location.href);
+            url.searchParams.set("lang", lang);
+            window.location.assign(url.toString());
           }
         });
+
+        // A cached page can show the wrong language for a returning visitor:
+        // if the saved choice differs from what was rendered, open the right version.
+        (() => {
+          const params = new URLSearchParams(window.location.search);
+          if (params.has("lang")) return;
+          const saved = (document.cookie.match(/(?:^|; )menu_popup_lang=(en|ar)/) || [])[1];
+          if (!saved) return;
+          const shown = $(".menu-popup-container").first().hasClass("menu-rtl") ? "ar" : "en";
+          if (saved !== shown) {
+            params.set("lang", saved);
+            window.location.replace(window.location.pathname + "?" + params.toString() + window.location.hash);
+          }
+        })();
 
         // Handle window resize for responsive animations
         $(window).on(

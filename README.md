@@ -2,7 +2,7 @@
 
 A complete restaurant toolkit for WordPress: an interactive menu with video pop-ups, online ordering (delivery, pickup and dine-in by QR code), Egyptian payment methods, a live order dashboard, and a table reservation system with a live floor plan.
 
-**Version:** 7.7.3 · **License:** GPL v2 or later · **Author:** Ahmed Ali
+**Version:** 7.7.4 · **License:** GPL v2 or later · **Author:** Ahmed Ali
 
 ---
 
@@ -517,6 +517,10 @@ Deleting the plugin **keeps all data**: menu items, orders, reservations and set
 ---
 
 ## Changelog
+
+**7.7.4**
+- Language switcher: choosing a language now opens the page with that language in the address (?lang=ar / ?lang=en), so the change shows even when a page cache is active; a saved choice is also applied to a cached page
+- Video window: title and description follow the chosen language
 
 **7.7.3**
 - Video window and branch-change window: keyboard focus now moves into the window when it opens, stays inside while it is open, and returns to the previous element on close
